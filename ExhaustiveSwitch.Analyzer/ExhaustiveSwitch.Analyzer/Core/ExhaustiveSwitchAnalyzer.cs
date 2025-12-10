@@ -51,16 +51,16 @@ namespace ExhaustiveSwitch.Analyzer
                     return;
 
                 // [Exhaustive] -> [Case] のキャッシュ
-                var implementationCache = new ConcurrentDictionary<INamedTypeSymbol, HashSet<INamedTypeSymbol>>(SymbolEqualityComparer.Default);
+                var hierarchyInfoCache = new ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo>(SymbolEqualityComparer.Default);
 
                 // switch文の解析
                 compilationContext.RegisterSyntaxNodeAction(nodeContext =>
-                    AnalyzeSwitchStatement(nodeContext, exhaustiveAttributeType, caseAttributeType, implementationCache),
+                    AnalyzeSwitchStatement(nodeContext, exhaustiveAttributeType, caseAttributeType, hierarchyInfoCache),
                     SyntaxKind.SwitchStatement);
 
                 // switch式の解析
                 compilationContext.RegisterSyntaxNodeAction(nodeContext =>
-                    AnalyzeSwitchExpression(nodeContext, exhaustiveAttributeType, caseAttributeType, implementationCache),
+                    AnalyzeSwitchExpression(nodeContext, exhaustiveAttributeType, caseAttributeType, hierarchyInfoCache),
                     SyntaxKind.SwitchExpression);
             });
         }
@@ -69,28 +69,28 @@ namespace ExhaustiveSwitch.Analyzer
             SyntaxNodeAnalysisContext context,
             INamedTypeSymbol exhaustiveAttributeType,
             INamedTypeSymbol caseAttributeType,
-            ConcurrentDictionary<INamedTypeSymbol, HashSet<INamedTypeSymbol>> implementationCache)
+            ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo> hierarchyInfoCache)
         {
             var switchStatement = (SwitchStatementSyntax)context.Node;
             var switchExpression = switchStatement.Expression;
 
             AnalyzeSwitchConstruct(context, switchExpression, switchStatement.GetLocation(),
                 switchStatement.Sections.SelectMany(s => s.Labels).ToList(),
-                exhaustiveAttributeType, caseAttributeType, implementationCache);
+                exhaustiveAttributeType, caseAttributeType, hierarchyInfoCache);
         }
 
         private void AnalyzeSwitchExpression(
             SyntaxNodeAnalysisContext context,
             INamedTypeSymbol exhaustiveAttributeType,
             INamedTypeSymbol caseAttributeType,
-            ConcurrentDictionary<INamedTypeSymbol, HashSet<INamedTypeSymbol>> implementationCache)
+            ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo> hierarchyInfoCache)
         {
             var switchExpression = (SwitchExpressionSyntax)context.Node;
             var governingExpression = switchExpression.GoverningExpression;
 
             AnalyzeSwitchConstruct(context, governingExpression, switchExpression.GetLocation(),
                 switchExpression.Arms.Select(a => a.Pattern).ToList(),
-                exhaustiveAttributeType, caseAttributeType, implementationCache);
+                exhaustiveAttributeType, caseAttributeType, hierarchyInfoCache);
         }
 
         private void AnalyzeSwitchConstruct(
@@ -100,37 +100,44 @@ namespace ExhaustiveSwitch.Analyzer
             IReadOnlyList<SyntaxNode> patterns,
             INamedTypeSymbol exhaustiveAttributeType,
             INamedTypeSymbol caseAttributeType,
-            ConcurrentDictionary<INamedTypeSymbol, HashSet<INamedTypeSymbol>> implementationCache)
+            ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo> hierarchyInfoCache)
         {
             var semanticModel = context.SemanticModel;
             var typeInfo = semanticModel.GetTypeInfo(governingExpression);
             var switchedType = typeInfo.Type;
 
             if (switchedType == null)
+            {
                 return;
+            }
 
             // [Exhaustive]属性を持つ型を探す
             var exhaustiveType = TypeAnalysisHelpers.FindExhaustiveBaseType(switchedType, exhaustiveAttributeType);
             if (exhaustiveType == null)
+            {
                 return;
+            }
 
             // S_expected: キャッシュを確認し、なければスキャンを実行する
-            var expectedCases = implementationCache.GetOrAdd(
+            var hierarchyInfo = hierarchyInfoCache.GetOrAdd(
                 exhaustiveType,
-                _ => ScanForDerivedTypes(context.Compilation, exhaustiveType, caseAttributeType));
-            if (expectedCases.Count == 0)
+                _ => new ExhaustiveHierarchyInfo( ScanForDerivedTypes(context.Compilation, exhaustiveType, caseAttributeType)));
+            if (hierarchyInfo.AllCases.Count == 0)
+            {
                 return;
-
-            // S_actual: switch内で明示的に処理されている具象型を収集
-            var actualCases = CollectHandledCases(patterns, semanticModel, expectedCases);
-
-            // S_expected \ S_actual を計算（処理されていないケース）
-            var missingCases = expectedCases.Except(actualCases, SymbolEqualityComparer.Default)
-                .Cast<INamedTypeSymbol>()
-                .ToList();
-
+            }
+            
+            var handledCases = CollectHandledCases(patterns, semanticModel, hierarchyInfo);
+            var missingCases = new HashSet<INamedTypeSymbol>(hierarchyInfo.AllCases, SymbolEqualityComparer.Default);
+            missingCases.ExceptWith(handledCases);
+            
+            if (missingCases.Count == 0)
+            {
+                return;
+            }
+            
             // 不足している型のうち、報告すべき型をフィルタリング
-            var casesToReport = TypeAnalysisHelpers.FilterAncestorsWithUnhandledDescendants(missingCases, expectedCases);
+            var casesToReport = TypeAnalysisHelpers.FilterAncestorsWithUnhandledDescendants(missingCases, hierarchyInfo.AllCases);
 
             foreach (var missingCase in casesToReport)
             {
@@ -171,65 +178,135 @@ namespace ExhaustiveSwitch.Analyzer
 
             return expectedCases.ToHashSet();
         }
-
-        /// <summary>
-        /// switch内で明示的に処理されている具象型を収集
-        /// 継承関係を考慮し、処理された型の子孫と祖先もカバー済みとする
-        /// </summary>
+        
         private HashSet<INamedTypeSymbol> CollectHandledCases(
             IReadOnlyList<SyntaxNode> patterns,
             SemanticModel semanticModel,
-            HashSet<INamedTypeSymbol> expectedCases)
+            ExhaustiveHierarchyInfo hierarchyInfo)
         {
-            var handledCases = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-
-            // ステップ1: すべてのパターンから型を抽出し、直接カバーされた型とその子孫を収集
+            // 1. Switch文で明示的に処理された型
+            var explicitlyHandled = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+            
             foreach (var pattern in patterns)
             {
                 var typeSymbol = ExtractTypeFromPattern(pattern, semanticModel);
-                if (typeSymbol != null)
+                if (typeSymbol != null && hierarchyInfo.AllCases.Contains(typeSymbol))
                 {
-                    // switch内で処理された型自体が[Case]の場合、それを追加
-                    if (expectedCases.Contains(typeSymbol, SymbolEqualityComparer.Default))
-                    {
-                        handledCases.Add(typeSymbol);
-                    }
-
-                    // この型の子孫のうち、[Case]を持つ型もすべてカバー済みとする
-                    foreach (var expectedCase in expectedCases)
-                    {
-                        if (TypeAnalysisHelpers.IsImplementingOrDerivedFrom(expectedCase, typeSymbol))
-                        {
-                            handledCases.Add(expectedCase);
-                        }
-                    }
+                    explicitlyHandled.Add(typeSymbol);
                 }
             }
-
-            // ステップ2: すべての子孫がカバー済みの祖先をカバー済みとする（反復的に）
-            bool changed;
-            do
+        
+            // 2. グラフ探索でカバレッジを判定
+            var finalHandledCases = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+        
+            // メモ化用辞書（再帰呼び出しのコスト削減と循環参照回避）
+            // true: カバー済み, false: 未カバー
+            var memo = new Dictionary<INamedTypeSymbol, bool>(SymbolEqualityComparer.Default);
+        
+            foreach (var candidate in hierarchyInfo.AllCases)
             {
-                changed = false;
-                foreach (var expectedCase in expectedCases)
+                if (CheckCoverageRecursive(candidate, explicitlyHandled, hierarchyInfo, memo))
                 {
-                    if (!handledCases.Contains(expectedCase, SymbolEqualityComparer.Default))
+                    finalHandledCases.Add(candidate);
+                }
+            }
+        
+            return finalHandledCases;
+        }
+        
+        /// <summary>
+        /// 再帰的にカバレッジを判定（メモ化付き）
+        /// </summary>
+        private bool CheckCoverageRecursive(
+            INamedTypeSymbol type,
+            HashSet<INamedTypeSymbol> explicitlyHandled,
+            ExhaustiveHierarchyInfo hierarchyInfo,
+            Dictionary<INamedTypeSymbol, bool> memo)
+        {
+            if (memo.TryGetValue(type, out var cachedResult))
+            {
+                return cachedResult;
+            }
+        
+            // 循環参照防止のため、一旦falseを入れておく（DAGなら本来循環しないが念のため）
+            memo[type] = false;
+        
+            // 条件1: 自身が明示的に書かれている
+            if (explicitlyHandled.Contains(type))
+            {
+                memo[type] = true;
+                return true;
+            }
+        
+            // 条件2: 親（先祖）のいずれかが明示的に書かれている
+            // ※ここが重要：親が複数いる場合、どれか1つでもカバーされていれば、自分もカバーされたとみなす
+            // （例: switch(interface) で interface で受けていれば、実装クラスはすべてOK）
+            if (IsAnyAncestorExplicitlyHandled(type, explicitlyHandled, hierarchyInfo))
+            {
+                memo[type] = true;
+                return true;
+            }
+        
+            // 条件3: すべての「直接の子」がカバーされている
+            if (hierarchyInfo.DirectChildrenMap.TryGetValue(type, out var children) && children.Count > 0)
+            {
+                bool allChildrenCovered = true;
+                foreach (var child in children)
+                {
+                    if (!CheckCoverageRecursive(child, explicitlyHandled, hierarchyInfo, memo))
                     {
-                        // expectedCaseのすべての子孫（expectedCasesに含まれる）がhandledCasesに含まれるか確認
-                        var descendants = expectedCases.Where(e =>
-                            !SymbolEqualityComparer.Default.Equals(e, expectedCase) && TypeAnalysisHelpers.IsImplementingOrDerivedFrom(e, expectedCase)).ToList();
-
-                        // 子孫がいて、すべての子孫がカバー済みなら、この祖先もカバー済みとする
-                        if (descendants.Count > 0 && descendants.All(d => handledCases.Contains(d, SymbolEqualityComparer.Default)))
-                        {
-                            handledCases.Add(expectedCase);
-                            changed = true;
-                        }
+                        allChildrenCovered = false;
+                        break;
                     }
                 }
-            } while (changed);
-
-            return handledCases;
+        
+                if (allChildrenCovered)
+                {
+                    memo[type] = true;
+                    return true;
+                }
+            }
+        
+            // 条件1,2,3どれも満たさない -> 未カバー
+            return false;
+        }
+        
+        /// <summary>
+        /// 祖先を辿って「明示的にハンドルされているか」を確認
+        /// </summary>
+        private bool IsAnyAncestorExplicitlyHandled(
+            INamedTypeSymbol type,
+            HashSet<INamedTypeSymbol> explicitlyHandled,
+            ExhaustiveHierarchyInfo hierarchyInfo)
+        {
+            // 幅優先探索で親を遡る
+            var queue = new Queue<INamedTypeSymbol>();
+            var visited = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+            
+            // 初期親を追加
+            if (hierarchyInfo.DirectParentsMap.TryGetValue(type, out var parents))
+            {
+                foreach (var p in parents) queue.Enqueue(p);
+            }
+        
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+                if (!visited.Add(current)) continue;
+        
+                if (explicitlyHandled.Contains(current))
+                {
+                    return true;
+                }
+        
+                // さらに上の親へ
+                if (hierarchyInfo.DirectParentsMap.TryGetValue(current, out var grandParents))
+                {
+                    foreach (var gp in grandParents) queue.Enqueue(gp);
+                }
+            }
+        
+            return false;
         }
 
         /// <summary>

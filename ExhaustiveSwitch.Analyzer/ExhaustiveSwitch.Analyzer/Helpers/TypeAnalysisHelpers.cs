@@ -104,7 +104,7 @@ namespace ExhaustiveSwitch.Analyzer
         /// 他の不足している型の祖先である型は除外（祖先型は、その子孫がすべて処理されればカバーされるため）
         /// </summary>
         public static List<INamedTypeSymbol> FilterAncestorsWithUnhandledDescendants(
-            List<INamedTypeSymbol> missingCases,
+            HashSet<INamedTypeSymbol> missingCases,
             HashSet<INamedTypeSymbol> expectedCases)
         {
             var casesToReport = new List<INamedTypeSymbol>();
