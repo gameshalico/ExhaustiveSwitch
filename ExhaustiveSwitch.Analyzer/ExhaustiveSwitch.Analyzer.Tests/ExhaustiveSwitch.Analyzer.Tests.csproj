@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <RootNamespace>ExhaustiveSwitchAnalyzer.Tests</RootNamespace>
+    <RootNamespace>ExhaustiveSwitch.Analyzer.Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

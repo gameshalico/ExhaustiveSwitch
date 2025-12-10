@@ -17,8 +17,6 @@ namespace ExhaustiveSwitch.Analyzer
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ExhaustiveSwitchCodeFixProvider)), Shared]
     public class ExhaustiveSwitchCodeFixProvider : CodeFixProvider
     {
-        private const string Title = "不足しているケースを追加";
-
         public sealed override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create("EXH0001");
 
         public sealed override FixAllProvider GetFixAllProvider()
@@ -31,6 +29,11 @@ namespace ExhaustiveSwitch.Analyzer
             var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
             var diagnostic = context.Diagnostics.First();
             var diagnosticSpan = diagnostic.Location.SourceSpan;
+            
+            if (root == null)
+            {
+                return;
+            }
 
             // switch文またはswitch式を見つける
             var node = root.FindNode(diagnosticSpan);
@@ -116,16 +119,17 @@ namespace ExhaustiveSwitch.Analyzer
         {
             var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+            
+            if (root == null || semanticModel == null)
+            {
+                return document;
+            }
 
             // すべての診断から不足している型を取得
             var missingTypes = new List<INamedTypeSymbol>();
             foreach (var diagnostic in diagnostics)
             {
-                var missingTypeName = GetMissingTypeNameFromDiagnostic(diagnostic);
-                if (string.IsNullOrEmpty(missingTypeName))
-                    continue;
-
-                var missingType = FindTypeByName(semanticModel.Compilation, missingTypeName);
+                var missingType = GetMissingTypeFromDiagnostic(diagnostic, semanticModel.Compilation);
                 if (missingType != null)
                 {
                     missingTypes.Add(missingType);
@@ -144,7 +148,7 @@ namespace ExhaustiveSwitch.Analyzer
             var newSections = sections;
             foreach (var missingType in missingTypes)
             {
-                var newCaseSection = CreateCaseSectionForType(missingType, switchStatement);
+                var newCaseSection = CreateCaseSectionForType(missingType);
                 newSections = newSections.Insert(defaultIndex, newCaseSection);
                 defaultIndex++; // 次のケースは現在挿入した位置の後に挿入
             }
@@ -166,16 +170,17 @@ namespace ExhaustiveSwitch.Analyzer
         {
             var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+            
+            if (root == null || semanticModel == null)
+            {
+                return document;
+            }
 
             // すべての診断から不足している型を取得
             var missingTypes = new List<INamedTypeSymbol>();
             foreach (var diagnostic in diagnostics)
             {
-                var missingTypeName = GetMissingTypeNameFromDiagnostic(diagnostic);
-                if (string.IsNullOrEmpty(missingTypeName))
-                    continue;
-
-                var missingType = FindTypeByName(semanticModel.Compilation, missingTypeName);
+                var missingType = GetMissingTypeFromDiagnostic(diagnostic, semanticModel.Compilation);
                 if (missingType != null)
                 {
                     missingTypes.Add(missingType);
@@ -194,7 +199,7 @@ namespace ExhaustiveSwitch.Analyzer
             var newArms = arms;
             foreach (var missingType in missingTypes)
             {
-                var newArm = CreateSwitchArmForType(missingType, switchExpression);
+                var newArm = CreateSwitchArmForType(missingType);
                 newArms = newArms.Insert(discardIndex, newArm);
                 discardIndex++; // 次のケースは現在挿入した位置の後に挿入
             }
@@ -208,7 +213,7 @@ namespace ExhaustiveSwitch.Analyzer
             return document.WithSyntaxRoot(newRoot);
         }
 
-        private SwitchSectionSyntax CreateCaseSectionForType(INamedTypeSymbol type, SwitchStatementSyntax switchStatement)
+        private SwitchSectionSyntax CreateCaseSectionForType(INamedTypeSymbol type)
         {
             var typeName = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
             var variableName = GetVariableName(type);
@@ -236,7 +241,7 @@ namespace ExhaustiveSwitch.Analyzer
             return section;
         }
 
-        private SwitchExpressionArmSyntax CreateSwitchArmForType(INamedTypeSymbol type, SwitchExpressionSyntax switchExpression)
+        private SwitchExpressionArmSyntax CreateSwitchArmForType(INamedTypeSymbol type)
         {
             var typeName = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
             var variableName = GetVariableName(type);
@@ -268,57 +273,20 @@ namespace ExhaustiveSwitch.Analyzer
             return char.ToLower(name[0]) + name.Substring(1);
         }
 
-        private string GetMissingTypeNameFromDiagnostic(Diagnostic diagnostic)
+        private INamedTypeSymbol GetMissingTypeFromDiagnostic(Diagnostic diagnostic, Compilation compilation)
         {
-            // 診断のPropertiesから型名を取得
-            if (diagnostic.Properties.TryGetValue("MissingType", out var typeName))
+            if (diagnostic.Properties.TryGetValue("MissingTypeMetadata", out var metadataName) && !string.IsNullOrEmpty(metadataName))
             {
-                return typeName;
+                return compilation.GetTypeByMetadataName(metadataName);
             }
 
             return null;
         }
 
-        private INamedTypeSymbol FindTypeByName(Compilation compilation, string typeName)
+        private string GetMissingTypeNameFromDiagnostic(Diagnostic diagnostic)
         {
-            // グローバル名前空間から型を検索
-            var allTypes = GetAllTypes(compilation.GlobalNamespace);
-            return allTypes.FirstOrDefault(t => t.ToDisplayString() == typeName || t.Name == typeName);
-        }
-
-        private IEnumerable<INamedTypeSymbol> GetAllTypes(INamespaceSymbol namespaceSymbol)
-        {
-            foreach (var type in namespaceSymbol.GetTypeMembers())
-            {
-                yield return type;
-
-                // ネストされた型も含める
-                foreach (var nestedType in GetNestedTypes(type))
-                {
-                    yield return nestedType;
-                }
-            }
-
-            foreach (var childNamespace in namespaceSymbol.GetNamespaceMembers())
-            {
-                foreach (var type in GetAllTypes(childNamespace))
-                {
-                    yield return type;
-                }
-            }
-        }
-
-        private IEnumerable<INamedTypeSymbol> GetNestedTypes(INamedTypeSymbol type)
-        {
-            foreach (var nestedType in type.GetTypeMembers())
-            {
-                yield return nestedType;
-
-                foreach (var deeplyNestedType in GetNestedTypes(nestedType))
-                {
-                    yield return deeplyNestedType;
-                }
-            }
+            diagnostic.Properties.TryGetValue("MissingType", out var typeName);
+            return typeName;
         }
     }
 }

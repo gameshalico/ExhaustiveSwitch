@@ -18,7 +18,7 @@ namespace ExhaustiveSwitch.Analyzer
 
         private static readonly LocalizableString Title = "網羅性の不足";
         private static readonly LocalizableString MessageFormat = "Exhaustive 型 '{0}' の '{1}' ケースが switch で処理されていません。";
-        private static readonly LocalizableString Description = "[Case]属性を持つすべての具象型が明示的に処理されている必要があります.";
+        private static readonly LocalizableString Description = "[Case]属性を持つすべての具象型が明示的に処理されている必要があります。";
         private const string Category = "Usage";
 
         private static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
@@ -187,11 +187,11 @@ namespace ExhaustiveSwitch.Analyzer
                 }
             }
 
-            // エラーを報告
             foreach (var missingCase in casesToReport)
             {
                 var properties = ImmutableDictionary.CreateBuilder<string, string>();
                 properties.Add("MissingType", missingCase.ToDisplayString());
+                properties.Add("MissingTypeMetadata", GetFullMetadataName(missingCase));
 
                 var diagnostic = Diagnostic.Create(
                     Rule,
@@ -468,6 +468,44 @@ namespace ExhaustiveSwitch.Analyzer
             {
                 ScanType(nestedType, exhaustiveAttributeType, caseAttributeType, cache);
             }
+        }
+
+        private static string GetFullMetadataName(INamedTypeSymbol type)
+        {
+            if (type == null)
+                return string.Empty;
+
+            var parts = new List<string>();
+            var currentType = type;
+            while (currentType != null)
+            {
+                parts.Insert(0, currentType.MetadataName);
+                currentType = currentType.ContainingType;
+            }
+
+            var namespaceName = GetNamespaceName(type.ContainingNamespace);
+            if (!string.IsNullOrEmpty(namespaceName))
+            {
+                return namespaceName + "." + string.Join("+", parts);
+            }
+
+            return string.Join("+", parts);
+        }
+
+        private static string GetNamespaceName(INamespaceSymbol namespaceSymbol)
+        {
+            if (namespaceSymbol == null || namespaceSymbol.IsGlobalNamespace)
+                return string.Empty;
+
+            var parts = new List<string>();
+            var current = namespaceSymbol;
+            while (current != null && !current.IsGlobalNamespace)
+            {
+                parts.Insert(0, current.Name);
+                current = current.ContainingNamespace;
+            }
+
+            return string.Join(".", parts);
         }
     }
 }
