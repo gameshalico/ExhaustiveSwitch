@@ -161,32 +161,12 @@ namespace ExhaustiveSwitch.Analyzer
             var actualCases = CollectHandledCases(patterns, semanticModel, expectedCases);
 
             // S_expected \ S_actual を計算（処理されていないケース）
-            var missingCases = expectedCases.Except<INamedTypeSymbol>(actualCases, SymbolEqualityComparer.Default).ToList();
+            var missingCases = expectedCases.Except(actualCases, SymbolEqualityComparer.Default)
+                .Cast<INamedTypeSymbol>()
+                .ToList();
 
-            // 不足している型のうち、他の不足している型の祖先である型を除外
-            // （祖先型は、その子孫がすべて処理されればカバーされるため）
-            var casesToReport = new List<INamedTypeSymbol>();
-            foreach (var missingCase in missingCases)
-            {
-                // missingCaseの子孫のうち、expectedCasesに含まれる型
-                var descendants = new List<INamedTypeSymbol>();
-                foreach (var expectedCase in expectedCases)
-                {
-                    if (!SymbolEqualityComparer.Default.Equals(expectedCase, missingCase) &&
-                        TypeAnalysisHelpers.IsImplementingOrDerivedFrom(expectedCase, missingCase))
-                    {
-                        descendants.Add(expectedCase);
-                    }
-                }
-
-                // 子孫が存在しない場合、または子孫が全て処理済みの場合はエラーとして報告
-                // 子孫が存在し、かつ少なくとも1つが不足している場合は、この祖先型は報告しない
-                bool hasUnhandledDescendant = descendants.Any(d => missingCases.Contains(d, SymbolEqualityComparer.Default));
-                if (descendants.Count == 0 || !hasUnhandledDescendant)
-                {
-                    casesToReport.Add(missingCase);
-                }
-            }
+            // 不足している型のうち、報告すべき型をフィルタリング
+            var casesToReport = TypeAnalysisHelpers.FilterAncestorsWithUnhandledDescendants(missingCases, expectedCases);
 
             foreach (var missingCase in casesToReport)
             {
@@ -271,15 +251,6 @@ namespace ExhaustiveSwitch.Analyzer
         {
             switch (pattern)
             {
-                // switch文: case Goblin g:
-                case CaseSwitchLabelSyntax caseLabel:
-                    if (caseLabel.Value is IdentifierNameSyntax identifierName)
-                    {
-                        var symbolInfo = semanticModel.GetSymbolInfo(identifierName);
-                        return symbolInfo.Symbol as INamedTypeSymbol;
-                    }
-                    break;
-
                 // switch文: case Goblin g when ...:
                 case CasePatternSwitchLabelSyntax casePatternLabel:
                     return ExtractTypeFromPatternSyntax(casePatternLabel.Pattern, semanticModel);
@@ -328,7 +299,7 @@ namespace ExhaustiveSwitch.Analyzer
             // 参照しているアセンブリをチェック
             foreach (var referencedAssembly in assembly.Modules.SelectMany(m => m.ReferencedAssemblies))
             {
-                if (referencedAssembly.Name == targetAssembly.Name)
+                if (referencedAssembly.Name == targetAssembly.Identity.Name)
                     return true;
             }
 

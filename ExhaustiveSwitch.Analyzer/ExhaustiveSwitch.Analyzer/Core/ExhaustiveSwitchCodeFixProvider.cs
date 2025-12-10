@@ -18,9 +18,10 @@ namespace ExhaustiveSwitch.Analyzer
     public class ExhaustiveSwitchCodeFixProvider : CodeFixProvider
     {
         public sealed override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create("EXH0001");
-
+        
         public sealed override FixAllProvider GetFixAllProvider()
         {
+            // Fix Allは不要
             return null;
         }
 

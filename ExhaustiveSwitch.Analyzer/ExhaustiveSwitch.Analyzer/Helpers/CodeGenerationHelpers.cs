@@ -18,6 +18,12 @@ namespace ExhaustiveSwitch.Analyzer
                 return "value";
             }
 
+            // 1文字の型名の場合
+            if (name.Length == 1)
+            {
+                return name.ToLower();
+            }
+
             // 最初の文字を小文字に変換
             return char.ToLower(name[0]) + name.Substring(1);
         }

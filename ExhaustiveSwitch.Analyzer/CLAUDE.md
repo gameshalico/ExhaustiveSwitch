@@ -30,11 +30,31 @@ dotnet test --filter "FullyQualifiedName~TestMethodName"
 
 ## アーキテクチャ
 
-### プロジェクト構成
+### ソリューション構成
+
+このソリューションは3つのプロジェクトで構成されています：
+
+#### 1. ExhaustiveSwitch.Attributes
+- **役割**: `[Exhaustive]`と`[Case]`属性の定義
 - **ターゲットフレームワーク**: .NET Standard 2.0
-- **依存パッケージ**: Microsoft.CodeAnalysis.CSharp 4.3.0
+- **依存関係**: なし
+- **配置先**: Unity側とAnalyzer側の両方で使用
+
+#### 2. ExhaustiveSwitch.Analyzer
+- **役割**: Roslyn Analyzerとコードフィックスの実装
+- **ターゲットフレームワーク**: .NET Standard 2.0
+- **依存パッケージ**:
+  - Microsoft.CodeAnalysis.CSharp 4.3.0
+  - ExhaustiveSwitch.Attributes (プロジェクト参照)
 - **言語バージョン**: C# 8.0
-- **テストフレームワーク**: xUnit (.NET 8.0)
+
+#### 3. ExhaustiveSwitch.Analyzer.Tests
+- **役割**: ユニットテストと統合テスト
+- **ターゲットフレームワーク**: .NET 8.0
+- **テストフレームワーク**: xUnit
+- **依存パッケージ**:
+  - Microsoft.CodeAnalysis.CSharp.Analyzer.Testing
+  - ExhaustiveSwitch.Analyzer (プロジェクト参照)
 
 ### コア機能の実装方針
 
@@ -61,18 +81,60 @@ Analyzerは以下のステップで検証を行う必要があります：
 |--------|--------|-----------|
 | EXH0001 | Error | Exhaustive 型 '{0}' の '{1}' ケースが switch で処理されていません。 |
 
-## 主要ファイルの構成
+## フォルダ構成
 
-### Analyzerプロジェクト (ExhaustiveImplementationAnalyzer/)
-- **ExhaustiveImplementationAnalyzer.cs**: メインのAnalyzer実装
+```
+ExhaustiveSwitch.Analyzer/
+├─ ExhaustiveSwitch.Attributes/
+│   ├─ ExhaustiveAttribute.cs         # [Exhaustive]属性の定義
+│   └─ CaseAttribute.cs               # [Case]属性の定義
+│
+├─ ExhaustiveSwitch.Analyzer/
+│   ├─ Core/                          # Analyzer本体
+│   │   ├─ ExhaustiveSwitchAnalyzer.cs
+│   │   └─ ExhaustiveSwitchCodeFixProvider.cs
+│   │
+│   ├─ Helpers/                       # ヘルパークラス群
+│   │   ├─ TypeAnalysisHelpers.cs    # 型分析関連のヘルパー
+│   │   ├─ MetadataHelpers.cs        # メタデータ探索のヘルパー
+│   │   ├─ DiagnosticHelpers.cs      # 診断作成のヘルパー
+│   │   └─ CodeGenerationHelpers.cs  # コード生成のヘルパー
+│   │
+│   └─ Resources/                     # リソースファイル
+│       ├─ Resources.resx             # ローカライズ可能な文字列
+│       └─ Resources.Designer.cs      # リソースアクセス用コード
+│
+└─ ExhaustiveSwitch.Analyzer.Tests/
+    └─ ExhaustiveSwitchAnalyzerTests.cs  # ユニット・統合テスト
+```
+
+### 主要ファイルの説明
+
+#### ExhaustiveSwitch.Attributes/
+- Unity側とAnalyzer側の両方で参照される共有プロジェクト
+- 依存関係がないため、どの環境でも使用可能
+
+#### ExhaustiveSwitch.Analyzer/Core/
+- **ExhaustiveSwitchAnalyzer.cs**: メインのAnalyzer実装
   - `CompilationStartAction`で全[Case]型をキャッシュ
   - switch文/式ごとに網羅性を検証
-- **ExhaustiveAttribute.cs**: [Exhaustive]属性の定義
-- **CaseAttribute.cs**: [Case]属性の定義
+- **ExhaustiveSwitchCodeFixProvider.cs**: コードフィックスの実装
+  - 不足しているcaseを自動追加する機能
 
-### テストプロジェクト (ExhaustiveImplementationAnalyzer.Tests/)
+#### ExhaustiveSwitch.Analyzer/Helpers/
+- **TypeAnalysisHelpers.cs**: 型の継承関係や網羅性の分析
+- **MetadataHelpers.cs**: 参照アセンブリからの属性付き型の検索
+- **DiagnosticHelpers.cs**: 診断情報の作成
+- **CodeGenerationHelpers.cs**: CodeFixでのコード生成ロジック
+
+#### ExhaustiveSwitch.Analyzer/Resources/
+- **Resources.resx**: 診断メッセージやコードフィックスタイトルの定義
+- **Resources.Designer.cs**: リソースへの型付きアクセスを提供
+
+#### ExhaustiveSwitch.Analyzer.Tests/
 - xUnitとRoslyn Analyzer Testing frameworkを使用
 - `Microsoft.CodeAnalysis.CSharp.Analyzer.Testing`による統合テスト
+- Analyzerとコードフィックスの両方をテスト
 
 ## 実装の重要ポイント
 
@@ -88,3 +150,26 @@ ConcurrentDictionary<INamedTypeSymbol, ConcurrentBag<INamedTypeSymbol>> CaseCach
 ### 型の比較
 - `SymbolEqualityComparer.Default`を使用してジェネリクス型パラメータを含めた厳密な型比較を実施
 - `OriginalDefinition`を使用して構築されたジェネリック型（例: `List<int>`）を未構築型（例: `List<T>`）に変換して比較
+
+## Unity側への配置
+
+### 必要なファイル
+Unity側では以下のファイルが必要です：
+
+1. **ExhaustiveSwitch.Attributes.dll**
+   - `ExhaustiveSwitch.Attributes/bin/Release/netstandard2.0/ExhaustiveSwitch.Attributes.dll`
+   - Unityプロジェクトの`Assets/Plugins/`に配置
+
+2. **ExhaustiveSwitch.Analyzer.dll** (Roslyn Analyzer)
+   - `ExhaustiveSwitch.Analyzer/bin/Release/netstandard2.0/ExhaustiveSwitch.Analyzer.dll`
+   - Unityプロジェクトの`Assets/RoslynAnalyzers/`に配置
+   - または、NuGetパッケージとして配布
+
+### 配置の注意点
+- **Attributes.dll**: Unity側のゲームコードから参照されるため、Pluginsフォルダに配置
+- **Analyzer.dll**: コンパイル時のみ使用されるため、通常のPluginsフォルダとは別に配置
+- Attributes.dllは軽量で依存関係がないため、Unity側への影響は最小限
+
+### リソースファイルの注意点
+- `Resources/Resources.Designer.cs`の42行目で、リソース名を`"ExhaustiveSwitch.Analyzer.Resources.Resources"`に設定
+- フォルダ構成を変更した場合は、この名前を一致させる必要がある
