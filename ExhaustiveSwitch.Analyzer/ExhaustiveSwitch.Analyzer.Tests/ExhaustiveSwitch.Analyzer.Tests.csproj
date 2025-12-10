@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ExhaustiveSwitch.Analyzer\ExhaustiveSwitch.Analyzer.csproj" />
+    <ProjectReference Include="..\ExhaustiveSwitch.Attributes\ExhaustiveSwitch.Attributes.csproj" />
   </ItemGroup>
 
 </Project>

@@ -77,13 +77,11 @@ namespace ExhaustiveSwitch.Analyzer
                 {
                     var typeSymbol = (INamedTypeSymbol)symbolContext.Symbol;
 
-                    // 具象クラスかつ[Case]属性を持つ場合
-                    if (!typeSymbol.IsAbstract &&
-                        typeSymbol.TypeKind == TypeKind.Class &&
-                        HasAttribute(typeSymbol, caseAttributeType))
+                    // [Case]属性を持つ型
+                    if (TypeAnalysisHelpers.HasAttribute(typeSymbol, caseAttributeType))
                     {
                         // この型が実装/継承しているすべての[Exhaustive]型を見つける
-                        var exhaustiveTypes = FindAllExhaustiveTypes(typeSymbol, exhaustiveAttributeType);
+                        var exhaustiveTypes = TypeAnalysisHelpers.FindAllExhaustiveTypes(typeSymbol, exhaustiveAttributeType);
                         foreach (var exhaustiveType in exhaustiveTypes)
                         {
                             var caseSet = caseCache.GetOrAdd(exhaustiveType, _ => new ConcurrentDictionary<INamedTypeSymbol, byte>(SymbolEqualityComparer.Default));
@@ -146,7 +144,7 @@ namespace ExhaustiveSwitch.Analyzer
                 return;
 
             // [Exhaustive]属性を持つ型を探す
-            var exhaustiveType = FindExhaustiveBaseType(switchedType, exhaustiveAttributeType);
+            var exhaustiveType = TypeAnalysisHelpers.FindExhaustiveBaseType(switchedType, exhaustiveAttributeType);
             if (exhaustiveType == null)
                 return;
 
@@ -175,7 +173,7 @@ namespace ExhaustiveSwitch.Analyzer
                 foreach (var expectedCase in expectedCases)
                 {
                     if (!SymbolEqualityComparer.Default.Equals(expectedCase, missingCase) &&
-                        IsImplementingOrDerivedFrom(expectedCase, missingCase))
+                        TypeAnalysisHelpers.IsImplementingOrDerivedFrom(expectedCase, missingCase))
                     {
                         descendants.Add(expectedCase);
                     }
@@ -194,7 +192,7 @@ namespace ExhaustiveSwitch.Analyzer
             {
                 var properties = ImmutableDictionary.CreateBuilder<string, string>();
                 properties.Add("MissingType", missingCase.ToDisplayString());
-                properties.Add("MissingTypeMetadata", GetFullMetadataName(missingCase));
+                properties.Add("MissingTypeMetadata", MetadataHelpers.GetFullMetadataName(missingCase));
 
                 var diagnostic = Diagnostic.Create(
                     Rule,
@@ -205,61 +203,6 @@ namespace ExhaustiveSwitch.Analyzer
                 context.ReportDiagnostic(diagnostic);
             }
         }
-
-        /// <summary>
-        /// 指定された型またはその基底型から[Exhaustive]属性を持つ型を探す
-        /// </summary>
-        private INamedTypeSymbol FindExhaustiveBaseType(ITypeSymbol type, INamedTypeSymbol exhaustiveAttributeType)
-        {
-            // 型自体をチェック
-            if (type is INamedTypeSymbol namedType && HasAttribute(namedType, exhaustiveAttributeType))
-                return namedType;
-
-            // インターフェースをチェック
-            foreach (var iface in type.AllInterfaces)
-            {
-                if (HasAttribute(iface, exhaustiveAttributeType))
-                    return iface;
-            }
-
-            // 基底クラスをチェック
-            var baseType = type.BaseType;
-            while (baseType != null)
-            {
-                if (HasAttribute(baseType, exhaustiveAttributeType))
-                    return baseType;
-                baseType = baseType.BaseType;
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// 指定された型が実装/継承しているすべての[Exhaustive]型を見つける
-        /// </summary>
-        private List<INamedTypeSymbol> FindAllExhaustiveTypes(INamedTypeSymbol typeSymbol, INamedTypeSymbol exhaustiveAttributeType)
-        {
-            var exhaustiveTypes = new List<INamedTypeSymbol>();
-
-            // インターフェースをチェック
-            foreach (var iface in typeSymbol.AllInterfaces)
-            {
-                if (HasAttribute(iface, exhaustiveAttributeType))
-                    exhaustiveTypes.Add(iface);
-            }
-
-            // 基底クラスをチェック
-            var baseType = typeSymbol.BaseType;
-            while (baseType != null)
-            {
-                if (HasAttribute(baseType, exhaustiveAttributeType))
-                    exhaustiveTypes.Add(baseType);
-                baseType = baseType.BaseType;
-            }
-
-            return exhaustiveTypes;
-        }
-
 
         /// <summary>
         /// switch内で明示的に処理されている具象型を収集
@@ -287,7 +230,7 @@ namespace ExhaustiveSwitch.Analyzer
                     // この型の子孫のうち、[Case]を持つ型もすべてカバー済みとする
                     foreach (var expectedCase in expectedCases)
                     {
-                        if (IsImplementingOrDerivedFrom(expectedCase, typeSymbol))
+                        if (TypeAnalysisHelpers.IsImplementingOrDerivedFrom(expectedCase, typeSymbol))
                         {
                             handledCases.Add(expectedCase);
                         }
@@ -306,7 +249,7 @@ namespace ExhaustiveSwitch.Analyzer
                     {
                         // expectedCaseのすべての子孫（expectedCasesに含まれる）がhandledCasesに含まれるか確認
                         var descendants = expectedCases.Where(e =>
-                            !SymbolEqualityComparer.Default.Equals(e, expectedCase) && IsImplementingOrDerivedFrom(e, expectedCase)).ToList();
+                            !SymbolEqualityComparer.Default.Equals(e, expectedCase) && TypeAnalysisHelpers.IsImplementingOrDerivedFrom(e, expectedCase)).ToList();
 
                         // 子孫がいて、すべての子孫がカバー済みなら、この祖先もカバー済みとする
                         if (descendants.Count > 0 && descendants.All(d => handledCases.Contains(d, SymbolEqualityComparer.Default)))
@@ -367,40 +310,11 @@ namespace ExhaustiveSwitch.Analyzer
                     var recursiveTypeInfo = semanticModel.GetTypeInfo(recursivePattern.Type);
                     return recursiveTypeInfo.Type as INamedTypeSymbol;
 
-                case ConstantPatternSyntax constantPattern:
-                    var constantTypeInfo = semanticModel.GetTypeInfo(constantPattern.Expression);
-                    return constantTypeInfo.Type as INamedTypeSymbol;
-
                 default:
                     return null;
             }
         }
 
-        private bool HasAttribute(ISymbol symbol, INamedTypeSymbol attributeType)
-        {
-            return symbol.GetAttributes().Any(attr =>
-                SymbolEqualityComparer.Default.Equals(attr.AttributeClass, attributeType));
-        }
-
-        private bool IsImplementingOrDerivedFrom(INamedTypeSymbol typeSymbol, INamedTypeSymbol baseType)
-        {
-            // インターフェースの実装をチェック
-            if (baseType.TypeKind == TypeKind.Interface)
-            {
-                return typeSymbol.AllInterfaces.Contains(baseType, SymbolEqualityComparer.Default);
-            }
-
-            // 基底クラスの継承をチェック
-            var current = typeSymbol.BaseType;
-            while (current != null)
-            {
-                if (SymbolEqualityComparer.Default.Equals(current, baseType))
-                    return true;
-                current = current.BaseType;
-            }
-
-            return SymbolEqualityComparer.Default.Equals(typeSymbol, baseType);
-        }
 
         /// <summary>
         /// アセンブリが指定されたアセンブリを参照しているかチェック
@@ -452,13 +366,11 @@ namespace ExhaustiveSwitch.Analyzer
             INamedTypeSymbol caseAttributeType,
             ConcurrentDictionary<INamedTypeSymbol, ConcurrentDictionary<INamedTypeSymbol, byte>> cache)
         {
-            // 具象クラスかつ[Case]属性を持つ場合
-            if (!typeSymbol.IsAbstract &&
-                typeSymbol.TypeKind == TypeKind.Class &&
-                HasAttribute(typeSymbol, caseAttributeType))
+            // [Case]属性を持つ型
+            if (TypeAnalysisHelpers.HasAttribute(typeSymbol, caseAttributeType))
             {
                 // この型が実装/継承しているすべての[Exhaustive]型を見つける
-                var exhaustiveTypes = FindAllExhaustiveTypes(typeSymbol, exhaustiveAttributeType);
+                var exhaustiveTypes = TypeAnalysisHelpers.FindAllExhaustiveTypes(typeSymbol, exhaustiveAttributeType);
                 foreach (var exhaustiveType in exhaustiveTypes)
                 {
                     var caseSet = cache.GetOrAdd(exhaustiveType, _ => new ConcurrentDictionary<INamedTypeSymbol, byte>(SymbolEqualityComparer.Default));
@@ -471,44 +383,6 @@ namespace ExhaustiveSwitch.Analyzer
             {
                 ScanType(nestedType, exhaustiveAttributeType, caseAttributeType, cache);
             }
-        }
-
-        private static string GetFullMetadataName(INamedTypeSymbol type)
-        {
-            if (type == null)
-                return string.Empty;
-
-            var parts = new List<string>();
-            var currentType = type;
-            while (currentType != null)
-            {
-                parts.Insert(0, currentType.MetadataName);
-                currentType = currentType.ContainingType;
-            }
-
-            var namespaceName = GetNamespaceName(type.ContainingNamespace);
-            if (!string.IsNullOrEmpty(namespaceName))
-            {
-                return namespaceName + "." + string.Join("+", parts);
-            }
-
-            return string.Join("+", parts);
-        }
-
-        private static string GetNamespaceName(INamespaceSymbol namespaceSymbol)
-        {
-            if (namespaceSymbol == null || namespaceSymbol.IsGlobalNamespace)
-                return string.Empty;
-
-            var parts = new List<string>();
-            var current = namespaceSymbol;
-            while (current != null && !current.IsGlobalNamespace)
-            {
-                parts.Insert(0, current.Name);
-                current = current.ContainingNamespace;
-            }
-
-            return string.Join(".", parts);
         }
     }
 }

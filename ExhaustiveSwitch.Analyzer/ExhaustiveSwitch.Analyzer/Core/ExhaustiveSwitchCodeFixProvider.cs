@@ -62,7 +62,7 @@ namespace ExhaustiveSwitch.Analyzer
                 var individualActions = new List<CodeAction>();
                 foreach (var diag in allDiagnostics)
                 {
-                    var typeName = GetMissingTypeNameFromDiagnostic(diag);
+                    var typeName = DiagnosticHelpers.GetMissingTypeNameFromDiagnostic(diag);
                     individualActions.Add(CodeAction.Create(
                         title: string.Format(Resources.CodeFixAddSingleCase, typeName),
                         createChangedDocument: c => AddMissingCasesToSwitchStatementAsync(context.Document, switchStatement, new[] { diag }, c),
@@ -99,7 +99,7 @@ namespace ExhaustiveSwitch.Analyzer
                 var individualActions = new List<CodeAction>();
                 foreach (var diag in allDiagnostics)
                 {
-                    var typeName = GetMissingTypeNameFromDiagnostic(diag);
+                    var typeName = DiagnosticHelpers.GetMissingTypeNameFromDiagnostic(diag);
                     individualActions.Add(CodeAction.Create(
                         title: string.Format(Resources.CodeFixAddSingleCase, typeName),
                         createChangedDocument: c => AddMissingCasesToSwitchExpressionAsync(context.Document, switchExpression, new[] { diag }, c),
@@ -129,7 +129,7 @@ namespace ExhaustiveSwitch.Analyzer
             var missingTypes = new List<INamedTypeSymbol>();
             foreach (var diagnostic in diagnostics)
             {
-                var missingType = GetMissingTypeFromDiagnostic(diagnostic, semanticModel.Compilation);
+                var missingType = DiagnosticHelpers.GetMissingTypeFromDiagnostic(diagnostic, semanticModel.Compilation);
                 if (missingType != null)
                 {
                     missingTypes.Add(missingType);
@@ -180,7 +180,7 @@ namespace ExhaustiveSwitch.Analyzer
             var missingTypes = new List<INamedTypeSymbol>();
             foreach (var diagnostic in diagnostics)
             {
-                var missingType = GetMissingTypeFromDiagnostic(diagnostic, semanticModel.Compilation);
+                var missingType = DiagnosticHelpers.GetMissingTypeFromDiagnostic(diagnostic, semanticModel.Compilation);
                 if (missingType != null)
                 {
                     missingTypes.Add(missingType);
@@ -216,7 +216,7 @@ namespace ExhaustiveSwitch.Analyzer
         private SwitchSectionSyntax CreateCaseSectionForType(INamedTypeSymbol type)
         {
             var typeName = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-            var variableName = GetVariableName(type);
+            var variableName = CodeGenerationHelpers.GetVariableName(type);
 
             // case TypeName variableName:
             //     throw new NotImplementedException();
@@ -244,7 +244,7 @@ namespace ExhaustiveSwitch.Analyzer
         private SwitchExpressionArmSyntax CreateSwitchArmForType(INamedTypeSymbol type)
         {
             var typeName = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-            var variableName = GetVariableName(type);
+            var variableName = CodeGenerationHelpers.GetVariableName(type);
 
             // TypeName variableName => throw new NotImplementedException(),
             var pattern = SyntaxFactory.DeclarationPattern(
@@ -261,32 +261,6 @@ namespace ExhaustiveSwitch.Analyzer
                 throwExpression);
 
             return arm;
-        }
-
-        private string GetVariableName(INamedTypeSymbol type)
-        {
-            var name = type.Name;
-            if (string.IsNullOrEmpty(name))
-                return "value";
-
-            // 最初の文字を小文字に変換
-            return char.ToLower(name[0]) + name.Substring(1);
-        }
-
-        private INamedTypeSymbol GetMissingTypeFromDiagnostic(Diagnostic diagnostic, Compilation compilation)
-        {
-            if (diagnostic.Properties.TryGetValue("MissingTypeMetadata", out var metadataName) && !string.IsNullOrEmpty(metadataName))
-            {
-                return compilation.GetTypeByMetadataName(metadataName);
-            }
-
-            return null;
-        }
-
-        private string GetMissingTypeNameFromDiagnostic(Diagnostic diagnostic)
-        {
-            diagnostic.Properties.TryGetValue("MissingType", out var typeName);
-            return typeName;
         }
     }
 }
