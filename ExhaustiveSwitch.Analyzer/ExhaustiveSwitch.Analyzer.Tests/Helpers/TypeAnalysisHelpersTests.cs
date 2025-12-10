@@ -19,7 +19,7 @@ using System;
 [Serializable]
 public class MyClass { }
 ";
-            var (compilation, _) = CreateCompilation(code);
+            var compilation = CreateCompilation(code);
             var typeSymbol = compilation.GetTypeByMetadataName("MyClass");
             var attributeSymbol = compilation.GetTypeByMetadataName("System.SerializableAttribute");
 
@@ -37,7 +37,7 @@ public class MyClass { }
             var code = @"
 public class MyClass { }
 ";
-            var (compilation, _) = CreateCompilation(code);
+            var compilation = CreateCompilation(code);
             var typeSymbol = compilation.GetTypeByMetadataName("MyClass");
             var attributeSymbol = compilation.GetTypeByMetadataName("System.SerializableAttribute");
 
@@ -57,7 +57,7 @@ public interface IBase { }
 
 public class Derived : IBase { }
 ";
-            var (compilation, _) = CreateCompilation(code);
+            var compilation = CreateCompilation(code);
             var derivedType = compilation.GetTypeByMetadataName("Derived");
             var baseInterface = compilation.GetTypeByMetadataName("IBase");
 
@@ -77,7 +77,7 @@ public class Base { }
 
 public class Derived : Base { }
 ";
-            var (compilation, _) = CreateCompilation(code);
+            var compilation = CreateCompilation(code);
             var derivedType = compilation.GetTypeByMetadataName("Derived");
             var baseClass = compilation.GetTypeByMetadataName("Base");
 
@@ -97,7 +97,7 @@ public class Base { }
 
 public class Unrelated { }
 ";
-            var (compilation, _) = CreateCompilation(code);
+            var compilation = CreateCompilation(code);
             var unrelatedType = compilation.GetTypeByMetadataName("Unrelated");
             var baseClass = compilation.GetTypeByMetadataName("Base");
 
@@ -115,7 +115,7 @@ public class Unrelated { }
             var code = @"
 public class MyClass { }
 ";
-            var (compilation, _) = CreateCompilation(code);
+            var compilation = CreateCompilation(code);
             var typeSymbol = compilation.GetTypeByMetadataName("MyClass");
 
             var result = TypeAnalysisHelpers.IsImplementingOrDerivedFrom(typeSymbol, typeSymbol);
@@ -123,82 +123,7 @@ public class MyClass { }
             Assert.True(result);
         }
 
-        /// <summary>
-        /// 祖先型を正しくフィルタリング
-        /// </summary>
-        [Fact]
-        public void FilterAncestorsWithUnhandledDescendants_WithUnhandledDescendants_FiltersAncestors()
-        {
-            var code = @"
-using ExhaustiveSwitch;
-
-[Exhaustive]
-public abstract class Enemy { }
-
-[Case]
-public class Slime : Enemy { }
-
-[Case]
-public class KingSlime : Slime { }
-";
-            var (compilation, _) = CreateCompilationWithAttributes(code);
-            var slimeType = compilation.GetTypeByMetadataName("Slime");
-            var kingSlimeType = compilation.GetTypeByMetadataName("KingSlime");
-
-            var missingCases = new System.Collections.Generic.HashSet<INamedTypeSymbol>(
-                new[] { slimeType!, kingSlimeType! },
-                SymbolEqualityComparer.Default);
-
-            var expectedCases = new System.Collections.Generic.HashSet<INamedTypeSymbol>(
-                new[] { slimeType!, kingSlimeType! },
-                SymbolEqualityComparer.Default);
-
-            var result = TypeAnalysisHelpers.FilterAncestorsWithUnhandledDescendants(missingCases, expectedCases);
-
-            // KingSlimeのみが報告される（Slimeはその子孫KingSlimeが不足しているため除外）
-            Assert.Single(result);
-            Assert.Contains(result, t => t.Name == "KingSlime");
-        }
-
-        /// <summary>
-        /// 子孫が処理済みの祖先型は報告される
-        /// </summary>
-        [Fact]
-        public void FilterAncestorsWithUnhandledDescendants_AllDescendantsHandled_IncludesAncestor()
-        {
-            var code = @"
-using ExhaustiveSwitch;
-
-[Exhaustive]
-public abstract class Enemy { }
-
-[Case]
-public class Slime : Enemy { }
-
-[Case]
-public class KingSlime : Slime { }
-";
-            var (compilation, _) = CreateCompilationWithAttributes(code);
-            var slimeType = compilation.GetTypeByMetadataName("Slime");
-            var kingSlimeType = compilation.GetTypeByMetadataName("KingSlime");
-
-            // Slimeのみが不足している
-            var missingCases = new System.Collections.Generic.HashSet<INamedTypeSymbol>(
-                new[] { slimeType! },
-                SymbolEqualityComparer.Default);
-
-            var expectedCases = new System.Collections.Generic.HashSet<INamedTypeSymbol>(
-                new[] { slimeType!, kingSlimeType! },
-                SymbolEqualityComparer.Default);
-
-            var result = TypeAnalysisHelpers.FilterAncestorsWithUnhandledDescendants(missingCases, expectedCases);
-
-            // Slimeが報告される（子孫KingSlimeは処理済みのため）
-            Assert.Single(result);
-            Assert.Contains(result, t => t.Name == "Slime");
-        }
-
-        private static (Compilation compilation, SemanticModel semanticModel) CreateCompilation(string code)
+        private static Compilation CreateCompilation(string code)
         {
             var syntaxTree = CSharpSyntaxTree.ParseText(code);
             var compilation = CSharpCompilation.Create(
@@ -207,8 +132,7 @@ public class KingSlime : Slime { }
                 new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) },
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-            var semanticModel = compilation.GetSemanticModel(syntaxTree);
-            return (compilation, semanticModel);
+            return compilation;
         }
 
         private static (Compilation compilation, SemanticModel semanticModel) CreateCompilationWithAttributes(string code)

@@ -99,41 +99,6 @@ namespace ExhaustiveSwitch.Analyzer
 
             return SymbolEqualityComparer.Default.Equals(typeSymbol, baseType);
         }
-
-        /// <summary>
-        /// 不足している型のうち、報告すべき型をフィルタリング
-        /// 他の不足している型の祖先である型は除外（祖先型は、その子孫がすべて処理されればカバーされるため）
-        /// </summary>
-        public static List<INamedTypeSymbol> FilterAncestorsWithUnhandledDescendants(
-            HashSet<INamedTypeSymbol> missingCases,
-            HashSet<INamedTypeSymbol> expectedCases)
-        {
-            var casesToReport = new List<INamedTypeSymbol>();
-
-            foreach (var missingCase in missingCases)
-            {
-                // missingCaseの子孫のうち、expectedCasesに含まれる型
-                var descendants = new List<INamedTypeSymbol>();
-                foreach (var expectedCase in expectedCases)
-                {
-                    if (!SymbolEqualityComparer.Default.Equals(expectedCase, missingCase) &&
-                        IsImplementingOrDerivedFrom(expectedCase, missingCase))
-                    {
-                        descendants.Add(expectedCase);
-                    }
-                }
-
-                // 子孫が存在しない場合、または子孫が全て処理済みの場合はエラーとして報告
-                // 子孫が存在し、かつ少なくとも1つが不足している場合は、この祖先型は報告しない
-                bool hasUnhandledDescendant = descendants.Any(d => missingCases.Contains(d, SymbolEqualityComparer.Default));
-                if (descendants.Count == 0 || !hasUnhandledDescendant)
-                {
-                    casesToReport.Add(missingCase);
-                }
-            }
-
-            return casesToReport;
-        }
         
         /// <summary>
         /// パターンから型を抽出

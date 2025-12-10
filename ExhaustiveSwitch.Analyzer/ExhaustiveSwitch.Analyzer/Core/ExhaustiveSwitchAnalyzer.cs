@@ -214,7 +214,7 @@ namespace ExhaustiveSwitch.Analyzer
             }
             
             // 不足している型のうち、報告すべき型をフィルタリング
-            var casesToReport = TypeAnalysisHelpers.FilterAncestorsWithUnhandledDescendants(missingCases, hierarchyInfo.AllCases);
+            var casesToReport = FilterAncestorsWithUnhandledDescendants(missingCases, hierarchyInfo);
 
             foreach (var missingCase in casesToReport)
             {
@@ -230,6 +230,53 @@ namespace ExhaustiveSwitch.Analyzer
                     missingCase.ToDisplayString());
                 context.ReportDiagnostic(diagnostic);
             }
+        }
+        
+        
+        /// <summary>
+        /// 不足している型のうち、報告すべき型をフィルタリング
+        /// 他の不足している型の祖先である型は除外（祖先型は、その子孫がすべて処理されればカバーされるため）
+        /// </summary>
+        private static List<INamedTypeSymbol> FilterAncestorsWithUnhandledDescendants(
+            HashSet<INamedTypeSymbol> missingCases,
+            ExhaustiveHierarchyInfo hierarchyInfo)
+        {
+            var casesToReport = new List<INamedTypeSymbol>();
+
+            foreach (var missingCase in missingCases)
+            {
+                if (hierarchyInfo.DirectChildrenMap.TryGetValue(missingCase, out var children))
+                {
+                    // 具象クラスの場合は子孫のチェックは不要
+                    if (missingCase.TypeKind == TypeKind.Class && !missingCase.IsAbstract)
+                    {
+                        casesToReport.Add(missingCase);
+                        continue;
+                    }
+                    
+                    // 不足している子孫がいるか
+                    bool hasMissingChild = false;
+                    foreach (var child in children)
+                    {
+                        if (missingCases.Contains(child))
+                        {
+                            hasMissingChild = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!hasMissingChild)
+                    {
+                        casesToReport.Add(missingCase);
+                    }
+                }
+                else
+                {
+                    casesToReport.Add(missingCase);
+                }
+            }
+
+            return casesToReport;
         }
         
         
