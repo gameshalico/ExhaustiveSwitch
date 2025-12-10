@@ -112,7 +112,7 @@ public class MyClass { }
             var diagnostic = Diagnostic.Create(
                 new DiagnosticDescriptor("TEST001", "Test", "Test message", "Test", DiagnosticSeverity.Error, true),
                 Location.None,
-                ImmutableDictionary<string, string>.Empty);
+                ImmutableDictionary<string, string>.Empty!);
 
             var result = DiagnosticHelpers.GetMissingTypeNameFromDiagnostic(diagnostic);
 

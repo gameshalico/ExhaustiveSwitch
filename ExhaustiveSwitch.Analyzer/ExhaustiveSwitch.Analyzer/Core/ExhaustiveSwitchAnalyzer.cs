@@ -82,29 +82,23 @@ namespace ExhaustiveSwitch.Analyzer
             void ProcessType(INamedTypeSymbol typeSymbol)
             {
                 // 1. [Case] 属性がついているかチェック
-                if (!TypeAnalysisHelpers.HasAttribute(typeSymbol, caseAttributeType))
+                if (TypeAnalysisHelpers.HasAttribute(typeSymbol, caseAttributeType))
                 {
-                    foreach (var nested in typeSymbol.GetTypeMembers())
+                    // 2. [Case]がついているなら、その親となる [Exhaustive] 型をすべて探す
+                    var exhaustiveBases = TypeAnalysisHelpers.FindAllExhaustiveTypes(typeSymbol, exhaustiveAttributeType);
+
+                    foreach (var exhaustiveBase in exhaustiveBases)
                     {
-                        ProcessType(nested);
+                        if (!map.TryGetValue(exhaustiveBase, out var children))
+                        {
+                            children = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+                            map[exhaustiveBase] = children;
+                        }
+                        children.Add(typeSymbol);
                     }
-                    return;
                 }
 
-                // 2. [Case]がついているなら、その親となる [Exhaustive] 型をすべて探す
-                var exhaustiveBases = TypeAnalysisHelpers.FindAllExhaustiveTypes(typeSymbol, exhaustiveAttributeType);
-
-                foreach (var exhaustiveBase in exhaustiveBases)
-                {
-                    if (!map.TryGetValue(exhaustiveBase, out var children))
-                    {
-                        children = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-                        map[exhaustiveBase] = children;
-                    }
-                    children.Add(typeSymbol);
-                }
-
-                // ネストされた型の再帰スキャン
+                // ネストされた型の再帰スキャン（[Case]属性の有無に関わらず常に処理）
                 foreach (var nested in typeSymbol.GetTypeMembers())
                 {
                     ProcessType(nested);
@@ -130,17 +124,17 @@ namespace ExhaustiveSwitch.Analyzer
         
             // 2. 参照アセンブリをスキャン
             var definitionAssembly = exhaustiveAttributeType.ContainingAssembly;
-            
+
             foreach (var reference in compilation.References)
             {
                 if (compilation.GetAssemblyOrModuleSymbol(reference) is IAssemblySymbol assembly)
                 {
                     // [Exhaustive]属性が定義されているアセンブリを参照していないアセンブリはスキャンをスキップ
-                    if (!ReferencesAssembly(assembly, definitionAssembly))
+                    if (!ReferencesAssembly(compilation, assembly, definitionAssembly))
                     {
                         continue;
                     }
-        
+
                     ProcessNamespace(assembly.GlobalNamespace);
                 }
             }
@@ -379,19 +373,44 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// アセンブリが指定されたアセンブリを参照しているかチェック
+        /// アセンブリが指定されたアセンブリを参照しているかチェック（transitive参照を含む）
         /// </summary>
-        private bool ReferencesAssembly(IAssemblySymbol assembly, IAssemblySymbol targetAssembly)
+        private bool ReferencesAssembly(Compilation compilation, IAssemblySymbol assembly, IAssemblySymbol targetAssembly)
         {
             // 自分自身の場合はtrue
             if (SymbolEqualityComparer.Default.Equals(assembly, targetAssembly))
                 return true;
 
-            // 参照しているアセンブリをチェック
-            foreach (var referencedAssembly in assembly.Modules.SelectMany(m => m.ReferencedAssemblies))
+            // 探索済みのアセンブリを記録（循環参照対策）
+            var visited = new HashSet<IAssemblySymbol>(SymbolEqualityComparer.Default);
+            var queue = new Queue<IAssemblySymbol>();
+            queue.Enqueue(assembly);
+
+            while (queue.Count > 0)
             {
-                if (referencedAssembly.Name == targetAssembly.Identity.Name)
-                    return true;
+                var current = queue.Dequeue();
+                if (!visited.Add(current))
+                    continue;
+
+                // 参照しているアセンブリをチェック
+                foreach (var referencedAssemblyIdentity in current.Modules.SelectMany(m => m.ReferencedAssemblies))
+                {
+                    if (referencedAssemblyIdentity.Name == targetAssembly.Identity.Name)
+                        return true;
+
+                    // Compilationから参照先のアセンブリシンボルを取得して再帰的にチェック
+                    foreach (var reference in compilation.References)
+                    {
+                        if (compilation.GetAssemblyOrModuleSymbol(reference) is IAssemblySymbol referencedAssembly)
+                        {
+                            if (referencedAssembly.Identity.Name == referencedAssemblyIdentity.Name)
+                            {
+                                queue.Enqueue(referencedAssembly);
+                                break;
+                            }
+                        }
+                    }
+                }
             }
 
             return false;

@@ -106,7 +106,7 @@ public class {typeName} {{ }}
                 new[] { syntaxTree },
                 new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) });
 
-            return compilation.GetTypeByMetadataName(typeName);
+            return compilation.GetTypeByMetadataName(typeName)!;
         }
     }
 }

@@ -139,7 +139,7 @@ public class MyClass { }
 
         private static INamedTypeSymbol GetTypeSymbol(Compilation compilation, string metadataName)
         {
-            return compilation.GetTypeByMetadataName(metadataName);
+            return compilation.GetTypeByMetadataName(metadataName)!;
         }
     }
 }

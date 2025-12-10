@@ -23,7 +23,7 @@ namespace ExhaustiveSwitch.Analyzer
         public sealed override FixAllProvider GetFixAllProvider()
         {
             // Fix Allは不要
-            return WellKnownFixAllProviders.BatchFixer;
+            return null;
         }
 
         public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
