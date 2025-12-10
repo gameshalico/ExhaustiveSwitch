@@ -13,6 +13,11 @@ namespace ExhaustiveSwitch.Analyzer
         /// </summary>
         public static string GetVariableName(INamedTypeSymbol type)
         {
+            if (type == null)
+            {
+                return "value";
+            }
+
             var name = type.Name;
             if (string.IsNullOrEmpty(name))
             {

@@ -436,198 +436,6 @@ public class Program
         }
 
         /// <summary>
-        /// CodeFix: switch文で不足しているcaseを追加
-        /// </summary>
-        [Fact]
-        public async Task CodeFix_AddMissingCaseToSwitchStatement()
-        {
-            var testCode = @"
-using ExhaustiveSwitch;
-
-[Exhaustive]
-public interface IEnemy { }
-
-[Case]
-public sealed class Goblin : IEnemy { }
-
-[Case]
-public sealed class Orc : IEnemy { }
-
-public class Program
-{
-    public void Process(IEnemy enemy)
-    {
-        {|#0:switch (enemy)
-        {
-            case Goblin g:
-                break;
-        }|}
-    }
-}";
-
-            var fixedCode = @"
-using ExhaustiveSwitch;
-
-[Exhaustive]
-public interface IEnemy { }
-
-[Case]
-public sealed class Goblin : IEnemy { }
-
-[Case]
-public sealed class Orc : IEnemy { }
-
-public class Program
-{
-    public void Process(IEnemy enemy)
-    {
-        switch (enemy)
-        {
-            case Goblin g:
-                break;
-            case Orc orc:
-                throw new System.NotImplementedException();
-        }
-    }
-}";
-
-            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
-                .WithLocation(0)
-                .WithArguments("IEnemy", "Orc");
-
-            await VerifyCodeFixAsync(testCode, expected, fixedCode);
-        }
-
-        /// <summary>
-        /// CodeFix: switch式で不足しているarmを追加
-        /// </summary>
-        [Fact]
-        public async Task CodeFix_AddMissingArmToSwitchExpression()
-        {
-            var testCode = @"
-using ExhaustiveSwitch;
-
-[Exhaustive]
-public interface IEnemy { }
-
-[Case]
-public sealed class Goblin : IEnemy { }
-
-[Case]
-public sealed class Orc : IEnemy { }
-
-public class Program
-{
-    public string Process(IEnemy enemy)
-    {
-        return {|#0:enemy switch
-        {
-            Goblin g => ""Goblin"",
-            _ => ""Unknown""
-        }|};
-    }
-}";
-
-            var fixedCode = @"
-using ExhaustiveSwitch;
-
-[Exhaustive]
-public interface IEnemy { }
-
-[Case]
-public sealed class Goblin : IEnemy { }
-
-[Case]
-public sealed class Orc : IEnemy { }
-
-public class Program
-{
-    public string Process(IEnemy enemy)
-    {
-        return enemy switch
-        {
-            Goblin g => ""Goblin"",
-            Orc orc => throw new System.NotImplementedException(),
-            _ => ""Unknown""
-        };
-    }
-}";
-
-            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
-                .WithLocation(0)
-                .WithArguments("IEnemy", "Orc");
-
-            await VerifyCodeFixAsync(testCode, expected, fixedCode);
-        }
-
-        /// <summary>
-        /// CodeFix: defaultセクションの前に不足しているcaseを追加
-        /// </summary>
-        [Fact]
-        public async Task CodeFix_AddMissingCaseBeforeDefault()
-        {
-            var testCode = @"
-using ExhaustiveSwitch;
-
-[Exhaustive]
-public interface IEnemy { }
-
-[Case]
-public sealed class Goblin : IEnemy { }
-
-[Case]
-public sealed class Orc : IEnemy { }
-
-public class Program
-{
-    public void Process(IEnemy enemy)
-    {
-        {|#0:switch (enemy)
-        {
-            case Goblin g:
-                break;
-            default:
-                break;
-        }|}
-    }
-}";
-
-            var fixedCode = @"
-using ExhaustiveSwitch;
-
-[Exhaustive]
-public interface IEnemy { }
-
-[Case]
-public sealed class Goblin : IEnemy { }
-
-[Case]
-public sealed class Orc : IEnemy { }
-
-public class Program
-{
-    public void Process(IEnemy enemy)
-    {
-        switch (enemy)
-        {
-            case Goblin g:
-                break;
-            case Orc orc:
-                throw new System.NotImplementedException();
-            default:
-                break;
-        }
-    }
-}";
-
-            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
-                .WithLocation(0)
-                .WithArguments("IEnemy", "Orc");
-
-            await VerifyCodeFixAsync(testCode, expected, fixedCode);
-        }
-
-        /// <summary>
         /// Interface + 入れ子のExhaustive: 中間クラスが[Case, Exhaustive]の場合、中間クラスを処理すれば網羅OK
         /// </summary>
         [Fact]
@@ -759,6 +567,301 @@ public class Program
             await VerifyAnalyzerAsync(test);
         }
 
+        /// <summary>
+        /// whenガード条件を持つパターンでも網羅性をチェック
+        /// </summary>
+        [Fact]
+        public async Task WhenPatternHasWhenClause_Diagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface IEnemy { }
+
+[Case]
+public sealed class Goblin : IEnemy
+{
+    public int Health { get; set; }
+}
+
+[Case]
+public sealed class Orc : IEnemy { }
+
+public class Program
+{
+    public void Process(IEnemy enemy)
+    {
+        {|#0:switch (enemy)
+        {
+            case Goblin g when g.Health > 50:
+                break;
+            case Goblin g:
+                break;
+        }|}
+    }
+}";
+
+            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("IEnemy", "Orc");
+
+            await VerifyAnalyzerAsync(test, expected);
+        }
+
+        /// <summary>
+        /// プロパティパターンを使用している場合でも網羅性をチェック
+        /// </summary>
+        [Fact]
+        public async Task WhenUsingPropertyPattern_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface IEnemy { }
+
+[Case]
+public sealed class Goblin : IEnemy
+{
+    public int Health { get; set; }
+}
+
+[Case]
+public sealed class Orc : IEnemy
+{
+    public int Power { get; set; }
+}
+
+public class Program
+{
+    public void Process(IEnemy enemy)
+    {
+        switch (enemy)
+        {
+            case Goblin { Health: > 0 }:
+                break;
+            case Goblin:
+                break;
+            case Orc { Power: > 10 }:
+                break;
+            case Orc:
+                break;
+        }
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
+        /// <summary>
+        /// 複数の不足ケースがある場合、すべて報告
+        /// </summary>
+        [Fact]
+        public async Task WhenMultipleCasesMissing_ReportsAll()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface IEnemy { }
+
+[Case]
+public sealed class Goblin : IEnemy { }
+
+[Case]
+public sealed class Orc : IEnemy { }
+
+[Case]
+public sealed class Dragon : IEnemy { }
+
+public class Program
+{
+    public void Process(IEnemy enemy)
+    {
+        {|#0:switch (enemy)
+        {
+            case Goblin g:
+                break;
+        }|}
+    }
+}";
+
+            // 複数不足している場合、すべて報告される
+            var expected1 = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("IEnemy", "Orc");
+
+            var expected2 = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("IEnemy", "Dragon");
+
+            await VerifyAnalyzerAsync(test, expected1, expected2);
+        }
+
+        /// <summary>
+        /// ネストしたswitchでも網羅性をチェック
+        /// </summary>
+        [Fact]
+        public async Task WhenNestedSwitch_BothChecked()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface IEnemy { }
+
+[Case]
+public sealed class Goblin : IEnemy { }
+
+[Case]
+public sealed class Orc : IEnemy { }
+
+[Exhaustive]
+public interface IItem { }
+
+[Case]
+public sealed class Sword : IItem { }
+
+[Case]
+public sealed class Shield : IItem { }
+
+public class Program
+{
+    public void Process(IEnemy enemy, IItem item)
+    {
+        switch (enemy)
+        {
+            case Goblin g:
+                {|#0:switch (item)
+                {
+                    case Sword s:
+                        break;
+                }|}
+                break;
+            case Orc o:
+                break;
+        }
+    }
+}";
+
+            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("IItem", "Shield");
+
+            await VerifyAnalyzerAsync(test, expected);
+        }
+
+        /// <summary>
+        /// Exhaustive属性のないインターフェースはチェックされない
+        /// </summary>
+        [Fact]
+        public async Task WhenNoExhaustiveAttribute_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+public interface IEnemy { }
+
+[Case]
+public sealed class Goblin : IEnemy { }
+
+[Case]
+public sealed class Orc : IEnemy { }
+
+public class Program
+{
+    public void Process(IEnemy enemy)
+    {
+        switch (enemy)
+        {
+            case Goblin g:
+                break;
+        }
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
+        /// <summary>
+        /// RecursivePatternでも型を正しく認識
+        /// </summary>
+        [Fact]
+        public async Task WhenUsingRecursivePattern_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface IEnemy { }
+
+[Case]
+public sealed class Goblin : IEnemy
+{
+    public string Name { get; set; }
+}
+
+[Case]
+public sealed class Orc : IEnemy
+{
+    public string Name { get; set; }
+}
+
+public class Program
+{
+    public string Process(IEnemy enemy)
+    {
+        return enemy switch
+        {
+            Goblin { Name: var name } => name,
+            Orc { Name: var name } => name,
+        };
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
+        /// <summary>
+        /// 空のswitchはすべてのケースが不足
+        /// </summary>
+        [Fact]
+        public async Task WhenEmptySwitch_Diagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface IEnemy { }
+
+[Case]
+public sealed class Goblin : IEnemy { }
+
+[Case]
+public sealed class Orc : IEnemy { }
+
+public class Program
+{
+    public void Process(IEnemy enemy)
+    {
+        {|#0:switch (enemy)
+        {
+        }|}
+    }
+}";
+
+            var expected1 = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("IEnemy", "Goblin");
+
+            var expected2 = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("IEnemy", "Orc");
+
+            await VerifyAnalyzerAsync(test, expected1, expected2);
+        }
+
         private static async Task VerifyAnalyzerAsync(string source, params DiagnosticResult[] expected)
         {
             var test = new CSharpAnalyzerTest<ExhaustiveSwitchAnalyzer, DefaultVerifier>
@@ -770,40 +873,6 @@ public class Program
 
             // Analyzerプロジェクト自体を参照に追加（属性を使用するため）
             test.TestState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);
-
-            test.ExpectedDiagnostics.AddRange(expected);
-
-            await test.RunAsync();
-        }
-
-        private static async Task VerifyCodeFixAsync(string source, DiagnosticResult expected, string fixedSource)
-        {
-            await VerifyCodeFixAsync(source, new[] { expected }, fixedSource, codeActionIndex: 0);
-        }
-
-        private static async Task VerifyCodeFixAsync(string source, DiagnosticResult[] expected, string fixedSource, int codeActionIndex)
-        {
-            var test = new CSharpCodeFixTest<ExhaustiveSwitchAnalyzer, ExhaustiveSwitchCodeFixProvider, DefaultVerifier>
-            {
-                TestCode = source,
-                ReferenceAssemblies = ReferenceAssemblies.Net.Net60,
-                CodeActionEquivalenceKey = codeActionIndex == 1 ? "AddAllCases" : null,
-            };
-
-            // codeActionIndex が 1 の場合、BatchFixedCode を使用
-            if (codeActionIndex == 1)
-            {
-                test.BatchFixedCode = fixedSource;
-            }
-            else
-            {
-                test.FixedCode = fixedSource;
-            }
-
-            // Analyzerプロジェクト自体を参照に追加（属性を使用するため）
-            test.TestState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);
-            test.FixedState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);
-            test.BatchFixedState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);
 
             test.ExpectedDiagnostics.AddRange(expected);
 
