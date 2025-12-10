@@ -49,48 +49,135 @@ namespace ExhaustiveSwitch.Analyzer
 
                 if (exhaustiveAttributeType == null || caseAttributeType == null)
                     return;
-
-                // [Exhaustive] -> [Case] のキャッシュ
-                var hierarchyInfoCache = new ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo>(SymbolEqualityComparer.Default);
-
+                
+                var lazyInheritanceMap = new Lazy<ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo>>(
+                    () => BuildInheritanceMap(compilationContext.Compilation, exhaustiveAttributeType, caseAttributeType), true);
+                
                 // switch文の解析
                 compilationContext.RegisterSyntaxNodeAction(nodeContext =>
-                    AnalyzeSwitchStatement(nodeContext, exhaustiveAttributeType, caseAttributeType, hierarchyInfoCache),
+                    AnalyzeSwitchStatement(nodeContext, exhaustiveAttributeType, lazyInheritanceMap.Value),
                     SyntaxKind.SwitchStatement);
 
                 // switch式の解析
                 compilationContext.RegisterSyntaxNodeAction(nodeContext =>
-                    AnalyzeSwitchExpression(nodeContext, exhaustiveAttributeType, caseAttributeType, hierarchyInfoCache),
+                    AnalyzeSwitchExpression(nodeContext, exhaustiveAttributeType, lazyInheritanceMap.Value),
                     SyntaxKind.SwitchExpression);
             });
+        }
+        
+        /// <summary>
+        /// コンパイル単位内の全型をスキャンし、[Exhaustive]な親と[Case]な子の関係マップを構築する
+        /// </summary>
+        private ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo> BuildInheritanceMap(
+            Compilation compilation,
+            INamedTypeSymbol exhaustiveAttributeType,
+            INamedTypeSymbol caseAttributeType)
+        {
+            // 結果格納用マップ
+            // Key: [Exhaustive]な親クラス/インターフェース
+            // Value: それを継承/実装している [Case] 属性付きの子クラス一覧
+            var map = new Dictionary<INamedTypeSymbol, HashSet<INamedTypeSymbol>>(SymbolEqualityComparer.Default);
+        
+            // ヘルパー: 型をチェックしてマップに追加する
+            void ProcessType(INamedTypeSymbol typeSymbol)
+            {
+                // 1. [Case] 属性がついているかチェック 
+                if (!TypeAnalysisHelpers.HasAttribute(typeSymbol, caseAttributeType))
+                {
+                    foreach (var nested in typeSymbol.GetTypeMembers())
+                    {
+                        ProcessType(nested);
+                    }
+                    return;
+                }
+        
+                // 2. [Case]がついているなら、その親となる [Exhaustive] 型を探す
+                var exhaustiveBase = TypeAnalysisHelpers.FindExhaustiveBaseType(typeSymbol, exhaustiveAttributeType);
+                
+                if (exhaustiveBase != null)
+                {
+                    if (!map.TryGetValue(exhaustiveBase, out var children))
+                    {
+                        children = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+                        map[exhaustiveBase] = children;
+                    }
+                    children.Add(typeSymbol);
+                }
+        
+                // ネストされた型の再帰スキャン
+                foreach (var nested in typeSymbol.GetTypeMembers())
+                {
+                    ProcessType(nested);
+                }
+            }
+        
+            // ヘルパー: 名前空間を再帰的に掘る
+            void ProcessNamespace(INamespaceSymbol namespaceSymbol)
+            {
+                foreach (var typeMember in namespaceSymbol.GetTypeMembers())
+                {
+                    ProcessType(typeMember);
+                }
+        
+                foreach (var nestedNamespace in namespaceSymbol.GetNamespaceMembers())
+                {
+                    ProcessNamespace(nestedNamespace);
+                }
+            }
+        
+            // 1. 現在のプロジェクトのソースコード (GlobalNamespace) をスキャン
+            ProcessNamespace(compilation.GlobalNamespace);
+        
+            // 2. 参照アセンブリをスキャン
+            var definitionAssembly = exhaustiveAttributeType.ContainingAssembly;
+            
+            foreach (var reference in compilation.References)
+            {
+                if (compilation.GetAssemblyOrModuleSymbol(reference) is IAssemblySymbol assembly)
+                {
+                    // [Exhaustive]属性が定義されているアセンブリを参照していないアセンブリはスキャンをスキップ
+                    if (!ReferencesAssembly(assembly, definitionAssembly))
+                    {
+                        continue;
+                    }
+        
+                    ProcessNamespace(assembly.GlobalNamespace);
+                }
+            }
+
+            // 3. 最終的なマップを構築して返す
+            var result = new ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo>(SymbolEqualityComparer.Default);
+            foreach (var kvp in map)
+            {
+                result[kvp.Key] = new ExhaustiveHierarchyInfo(kvp.Value);
+            }
+            return result;
         }
 
         private void AnalyzeSwitchStatement(
             SyntaxNodeAnalysisContext context,
             INamedTypeSymbol exhaustiveAttributeType,
-            INamedTypeSymbol caseAttributeType,
-            ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo> hierarchyInfoCache)
+            ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo> hierarchyInfoMap)
         {
             var switchStatement = (SwitchStatementSyntax)context.Node;
             var switchExpression = switchStatement.Expression;
 
             AnalyzeSwitchConstruct(context, switchExpression, switchStatement.GetLocation(),
                 switchStatement.Sections.SelectMany(s => s.Labels).ToList(),
-                exhaustiveAttributeType, caseAttributeType, hierarchyInfoCache);
+                exhaustiveAttributeType, hierarchyInfoMap);
         }
 
         private void AnalyzeSwitchExpression(
             SyntaxNodeAnalysisContext context,
             INamedTypeSymbol exhaustiveAttributeType,
-            INamedTypeSymbol caseAttributeType,
-            ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo> hierarchyInfoCache)
+            ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo> hierarchyInfoMap)
         {
             var switchExpression = (SwitchExpressionSyntax)context.Node;
             var governingExpression = switchExpression.GoverningExpression;
 
             AnalyzeSwitchConstruct(context, governingExpression, switchExpression.GetLocation(),
                 switchExpression.Arms.Select(a => a.Pattern).ToList(),
-                exhaustiveAttributeType, caseAttributeType, hierarchyInfoCache);
+                exhaustiveAttributeType, hierarchyInfoMap);
         }
 
         private void AnalyzeSwitchConstruct(
@@ -99,8 +186,7 @@ namespace ExhaustiveSwitch.Analyzer
             Location location,
             IReadOnlyList<SyntaxNode> patterns,
             INamedTypeSymbol exhaustiveAttributeType,
-            INamedTypeSymbol caseAttributeType,
-            ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo> hierarchyInfoCache)
+            ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo> hierarchyInfoMap)
         {
             var semanticModel = context.SemanticModel;
             var typeInfo = semanticModel.GetTypeInfo(governingExpression);
@@ -118,11 +204,8 @@ namespace ExhaustiveSwitch.Analyzer
                 return;
             }
 
-            // S_expected: キャッシュを確認し、なければスキャンを実行する
-            var hierarchyInfo = hierarchyInfoCache.GetOrAdd(
-                exhaustiveType,
-                _ => new ExhaustiveHierarchyInfo( ScanForDerivedTypes(context.Compilation, exhaustiveType, caseAttributeType)));
-            if (hierarchyInfo.AllCases.Count == 0)
+            // S_expected: [Exhaustive]な型に対応するすべての[Case]型を取得
+            if (hierarchyInfoMap.TryGetValue(exhaustiveType, out var hierarchyInfo) == false)
             {
                 return;
             }
@@ -155,29 +238,6 @@ namespace ExhaustiveSwitch.Analyzer
             }
         }
         
-        private HashSet<INamedTypeSymbol> ScanForDerivedTypes(
-            Compilation compilation,
-            INamedTypeSymbol exhaustiveBaseType,
-            INamedTypeSymbol caseAttributeType)
-        {
-            var expectedCases = new ConcurrentHashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-            var definitionAssembly = exhaustiveBaseType.ContainingAssembly;
-            
-            ScanTypesInNamespace(compilation.GlobalNamespace, exhaustiveBaseType, caseAttributeType, expectedCases);
-
-            // アセンブリをスキャン
-            foreach (var reference in compilation.References)
-            {
-                var assembly = compilation.GetAssemblyOrModuleSymbol(reference) as IAssemblySymbol;
-                // 定義アセンブリを参照していない場合はスキップ
-                if (assembly == null || !ReferencesAssembly(assembly, definitionAssembly))
-                    continue;
-
-                ScanTypesInNamespace(assembly.GlobalNamespace, exhaustiveBaseType, caseAttributeType, expectedCases);
-            }
-
-            return expectedCases.ToHashSet();
-        }
         
         private HashSet<INamedTypeSymbol> CollectHandledCases(
             IReadOnlyList<SyntaxNode> patterns,
@@ -369,53 +429,6 @@ namespace ExhaustiveSwitch.Analyzer
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// 名前空間内のすべての型を再帰的にスキャンし、exhaustiveBaseTypeを実装/継承しており、caseAttributeType属性を持つ型を収集
-        /// </summary>
-        private void ScanTypesInNamespace(
-            INamespaceSymbol namespaceSymbol,
-            INamedTypeSymbol exhaustiveBaseType,
-            INamedTypeSymbol caseAttributeType,
-            ConcurrentHashSet<INamedTypeSymbol> results)
-        {
-            // この名前空間内の型をスキャン
-            foreach (var typeMember in namespaceSymbol.GetTypeMembers())
-            {
-                ScanTypeRecursively(typeMember, exhaustiveBaseType, caseAttributeType, results);
-            }
-
-            // ネストされた名前空間を再帰的にスキャン
-            foreach (var nestedNamespace in namespaceSymbol.GetNamespaceMembers())
-            {
-                ScanTypesInNamespace(nestedNamespace, exhaustiveBaseType, caseAttributeType, results);
-            }
-        }
-
-        /// <summary>
-        /// 型とそのネストされた型をスキャンし、exhaustiveBaseTypeを実装/継承しており、caseAttributeType属性を持つ型を収集
-        /// </summary>
-        private void ScanTypeRecursively(
-            INamedTypeSymbol typeSymbol,
-            INamedTypeSymbol exhaustiveBaseType,
-            INamedTypeSymbol caseAttributeType,
-            ConcurrentHashSet<INamedTypeSymbol> results)
-        {
-            // [Case]属性を持つ型
-            if (TypeAnalysisHelpers.HasAttribute(typeSymbol, caseAttributeType))
-            {
-                if (TypeAnalysisHelpers.IsImplementingOrDerivedFrom(typeSymbol, exhaustiveBaseType))
-                {
-                    results.Add(typeSymbol);
-                }
-            }
-
-            // ネストされた型を再帰的にスキャン
-            foreach (var nestedType in typeSymbol.GetTypeMembers())
-            {
-                ScanTypeRecursively(nestedType, exhaustiveBaseType, caseAttributeType, results);
-            }
         }
     }
 }
