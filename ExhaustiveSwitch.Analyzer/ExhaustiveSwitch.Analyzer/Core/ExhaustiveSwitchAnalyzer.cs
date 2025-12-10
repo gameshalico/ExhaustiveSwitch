@@ -50,54 +50,17 @@ namespace ExhaustiveSwitch.Analyzer
                 if (exhaustiveAttributeType == null || caseAttributeType == null)
                     return;
 
-                // コンパイレーション全体から[Case]型を収集してキャッシュ（重複排除対応）
-                // 外側: [Exhaustive]型 -> 内側: [Case]型のセット（ConcurrentDictionaryをHashSetとして使用）
-                var caseCache = new ConcurrentDictionary<INamedTypeSymbol, ConcurrentDictionary<INamedTypeSymbol, byte>>(SymbolEqualityComparer.Default);
-
-                // Step A: 外部参照の最適化スキャン（Cold Path）
-                var attributeDefiningAssembly = exhaustiveAttributeType.ContainingAssembly;
-                var referencedAssemblies = compilationContext.Compilation.References
-                    .Select(r => compilationContext.Compilation.GetAssemblyOrModuleSymbol(r) as IAssemblySymbol)
-                    .Where(a => a != null)
-                    .ToList();
-
-                // 並列処理で外部アセンブリをスキャン
-                Parallel.ForEach(referencedAssemblies, assembly =>
-                {
-                    // フィルタリング: 属性定義アセンブリを参照していないアセンブリはスキップ
-                    if (!ReferencesAssembly(assembly, attributeDefiningAssembly))
-                        return;
-
-                    // このアセンブリ内のすべての型を再帰的にスキャン
-                    ScanTypesInNamespace(assembly.GlobalNamespace, exhaustiveAttributeType, caseAttributeType, caseCache);
-                });
-
-                // Step B: 内部コードの逐次スキャン（Hot Path）
-                compilationContext.RegisterSymbolAction(symbolContext =>
-                {
-                    var typeSymbol = (INamedTypeSymbol)symbolContext.Symbol;
-
-                    // [Case]属性を持つ型
-                    if (TypeAnalysisHelpers.HasAttribute(typeSymbol, caseAttributeType))
-                    {
-                        // この型が実装/継承しているすべての[Exhaustive]型を見つける
-                        var exhaustiveTypes = TypeAnalysisHelpers.FindAllExhaustiveTypes(typeSymbol, exhaustiveAttributeType);
-                        foreach (var exhaustiveType in exhaustiveTypes)
-                        {
-                            var caseSet = caseCache.GetOrAdd(exhaustiveType, _ => new ConcurrentDictionary<INamedTypeSymbol, byte>(SymbolEqualityComparer.Default));
-                            caseSet.TryAdd(typeSymbol, 0); // 重複排除
-                        }
-                    }
-                }, SymbolKind.NamedType);
+                // [Exhaustive] -> [Case] のキャッシュ
+                var implementationCache = new ConcurrentDictionary<INamedTypeSymbol, HashSet<INamedTypeSymbol>>(SymbolEqualityComparer.Default);
 
                 // switch文の解析
                 compilationContext.RegisterSyntaxNodeAction(nodeContext =>
-                    AnalyzeSwitchStatement(nodeContext, exhaustiveAttributeType, caseCache),
+                    AnalyzeSwitchStatement(nodeContext, exhaustiveAttributeType, caseAttributeType, implementationCache),
                     SyntaxKind.SwitchStatement);
 
                 // switch式の解析
                 compilationContext.RegisterSyntaxNodeAction(nodeContext =>
-                    AnalyzeSwitchExpression(nodeContext, exhaustiveAttributeType, caseCache),
+                    AnalyzeSwitchExpression(nodeContext, exhaustiveAttributeType, caseAttributeType, implementationCache),
                     SyntaxKind.SwitchExpression);
             });
         }
@@ -105,27 +68,29 @@ namespace ExhaustiveSwitch.Analyzer
         private void AnalyzeSwitchStatement(
             SyntaxNodeAnalysisContext context,
             INamedTypeSymbol exhaustiveAttributeType,
-            ConcurrentDictionary<INamedTypeSymbol, ConcurrentDictionary<INamedTypeSymbol, byte>> caseCache)
+            INamedTypeSymbol caseAttributeType,
+            ConcurrentDictionary<INamedTypeSymbol, HashSet<INamedTypeSymbol>> implementationCache)
         {
             var switchStatement = (SwitchStatementSyntax)context.Node;
             var switchExpression = switchStatement.Expression;
 
             AnalyzeSwitchConstruct(context, switchExpression, switchStatement.GetLocation(),
                 switchStatement.Sections.SelectMany(s => s.Labels).ToList(),
-                exhaustiveAttributeType, caseCache);
+                exhaustiveAttributeType, caseAttributeType, implementationCache);
         }
 
         private void AnalyzeSwitchExpression(
             SyntaxNodeAnalysisContext context,
             INamedTypeSymbol exhaustiveAttributeType,
-            ConcurrentDictionary<INamedTypeSymbol, ConcurrentDictionary<INamedTypeSymbol, byte>> caseCache)
+            INamedTypeSymbol caseAttributeType,
+            ConcurrentDictionary<INamedTypeSymbol, HashSet<INamedTypeSymbol>> implementationCache)
         {
             var switchExpression = (SwitchExpressionSyntax)context.Node;
             var governingExpression = switchExpression.GoverningExpression;
 
             AnalyzeSwitchConstruct(context, governingExpression, switchExpression.GetLocation(),
                 switchExpression.Arms.Select(a => a.Pattern).ToList(),
-                exhaustiveAttributeType, caseCache);
+                exhaustiveAttributeType, caseAttributeType, implementationCache);
         }
 
         private void AnalyzeSwitchConstruct(
@@ -134,7 +99,8 @@ namespace ExhaustiveSwitch.Analyzer
             Location location,
             IReadOnlyList<SyntaxNode> patterns,
             INamedTypeSymbol exhaustiveAttributeType,
-            ConcurrentDictionary<INamedTypeSymbol, ConcurrentDictionary<INamedTypeSymbol, byte>> caseCache)
+            INamedTypeSymbol caseAttributeType,
+            ConcurrentDictionary<INamedTypeSymbol, HashSet<INamedTypeSymbol>> implementationCache)
         {
             var semanticModel = context.SemanticModel;
             var typeInfo = semanticModel.GetTypeInfo(governingExpression);
@@ -148,12 +114,10 @@ namespace ExhaustiveSwitch.Analyzer
             if (exhaustiveType == null)
                 return;
 
-            // S_expected: [Case]を持つすべての具象型を取得（キャッシュから）
-            if (!caseCache.TryGetValue(exhaustiveType, out var expectedCasesDict))
-                return;
-
-            // ConcurrentDictionaryのキーからHashSetに変換（既に重複排除済み）
-            var expectedCases = new HashSet<INamedTypeSymbol>(expectedCasesDict.Keys, SymbolEqualityComparer.Default);
+            // S_expected: キャッシュを確認し、なければスキャンを実行する
+            var expectedCases = implementationCache.GetOrAdd(
+                exhaustiveType,
+                _ => ScanForDerivedTypes(context.Compilation, exhaustiveType, caseAttributeType));
             if (expectedCases.Count == 0)
                 return;
 
@@ -182,6 +146,30 @@ namespace ExhaustiveSwitch.Analyzer
                     missingCase.ToDisplayString());
                 context.ReportDiagnostic(diagnostic);
             }
+        }
+        
+        private HashSet<INamedTypeSymbol> ScanForDerivedTypes(
+            Compilation compilation,
+            INamedTypeSymbol exhaustiveBaseType,
+            INamedTypeSymbol caseAttributeType)
+        {
+            var expectedCases = new ConcurrentHashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+            var definitionAssembly = exhaustiveBaseType.ContainingAssembly;
+            
+            ScanTypesInNamespace(compilation.GlobalNamespace, exhaustiveBaseType, caseAttributeType, expectedCases);
+
+            // アセンブリをスキャン
+            foreach (var reference in compilation.References)
+            {
+                var assembly = compilation.GetAssemblyOrModuleSymbol(reference) as IAssemblySymbol;
+                // 定義アセンブリを参照していない場合はスキップ
+                if (assembly == null || !ReferencesAssembly(assembly, definitionAssembly))
+                    continue;
+
+                ScanTypesInNamespace(assembly.GlobalNamespace, exhaustiveBaseType, caseAttributeType, expectedCases);
+            }
+
+            return expectedCases.ToHashSet();
         }
 
         /// <summary>
@@ -307,52 +295,49 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// 名前空間内のすべての型を再帰的にスキャン
+        /// 名前空間内のすべての型を再帰的にスキャンし、exhaustiveBaseTypeを実装/継承しており、caseAttributeType属性を持つ型を収集
         /// </summary>
         private void ScanTypesInNamespace(
             INamespaceSymbol namespaceSymbol,
-            INamedTypeSymbol exhaustiveAttributeType,
+            INamedTypeSymbol exhaustiveBaseType,
             INamedTypeSymbol caseAttributeType,
-            ConcurrentDictionary<INamedTypeSymbol, ConcurrentDictionary<INamedTypeSymbol, byte>> cache)
+            ConcurrentHashSet<INamedTypeSymbol> results)
         {
             // この名前空間内の型をスキャン
             foreach (var typeMember in namespaceSymbol.GetTypeMembers())
             {
-                ScanType(typeMember, exhaustiveAttributeType, caseAttributeType, cache);
+                ScanTypeRecursively(typeMember, exhaustiveBaseType, caseAttributeType, results);
             }
 
             // ネストされた名前空間を再帰的にスキャン
             foreach (var nestedNamespace in namespaceSymbol.GetNamespaceMembers())
             {
-                ScanTypesInNamespace(nestedNamespace, exhaustiveAttributeType, caseAttributeType, cache);
+                ScanTypesInNamespace(nestedNamespace, exhaustiveBaseType, caseAttributeType, results);
             }
         }
 
         /// <summary>
-        /// 型とそのネストされた型をスキャン
+        /// 型とそのネストされた型をスキャンし、exhaustiveBaseTypeを実装/継承しており、caseAttributeType属性を持つ型を収集
         /// </summary>
-        private void ScanType(
+        private void ScanTypeRecursively(
             INamedTypeSymbol typeSymbol,
-            INamedTypeSymbol exhaustiveAttributeType,
+            INamedTypeSymbol exhaustiveBaseType,
             INamedTypeSymbol caseAttributeType,
-            ConcurrentDictionary<INamedTypeSymbol, ConcurrentDictionary<INamedTypeSymbol, byte>> cache)
+            ConcurrentHashSet<INamedTypeSymbol> results)
         {
             // [Case]属性を持つ型
             if (TypeAnalysisHelpers.HasAttribute(typeSymbol, caseAttributeType))
             {
-                // この型が実装/継承しているすべての[Exhaustive]型を見つける
-                var exhaustiveTypes = TypeAnalysisHelpers.FindAllExhaustiveTypes(typeSymbol, exhaustiveAttributeType);
-                foreach (var exhaustiveType in exhaustiveTypes)
+                if (TypeAnalysisHelpers.IsImplementingOrDerivedFrom(typeSymbol, exhaustiveBaseType))
                 {
-                    var caseSet = cache.GetOrAdd(exhaustiveType, _ => new ConcurrentDictionary<INamedTypeSymbol, byte>(SymbolEqualityComparer.Default));
-                    caseSet.TryAdd(typeSymbol, 0); // 重複排除
+                    results.Add(typeSymbol);
                 }
             }
 
             // ネストされた型を再帰的にスキャン
             foreach (var nestedType in typeSymbol.GetTypeMembers())
             {
-                ScanType(nestedType, exhaustiveAttributeType, caseAttributeType, cache);
+                ScanTypeRecursively(nestedType, exhaustiveBaseType, caseAttributeType, results);
             }
         }
     }

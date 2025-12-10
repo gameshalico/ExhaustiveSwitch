@@ -14,8 +14,7 @@ public sealed class ConcreteA : ISample
     
 }
 
-[Case]
-[Exhaustive]
+[Case, Exhaustive]
 public class ConcreteB : ISample
 {
     
