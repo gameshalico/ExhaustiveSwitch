@@ -261,6 +261,7 @@ public class Program
 
         /// <summary>
         /// 多重継承: すべての具象型（KingSlime, QueenSlime, Orc）で処理する場合、エラーなし
+        /// Slimeはabstractなので、その子クラスをすべて処理すればカバーされる
         /// </summary>
         [Fact]
         public async Task WhenMultipleInheritance_AllConcreteTypes_NoDiagnostic()
@@ -272,7 +273,7 @@ using ExhaustiveSwitch;
 public abstract class Enemy { }
 
 [Case]
-public class Slime : Enemy { }
+public abstract class Slime : Enemy { }
 
 [Case]
 public sealed class KingSlime : Slime { }
@@ -347,7 +348,7 @@ public class Program
         /// <summary>
         /// 多重継承: 一部の具象型が不足している場合、エラー
         /// KingSlimeとOrcのみで処理しているので、QueenSlimeが不足
-        /// （Slimeは、KingSlimeとQueenSlimeがすべて処理されればカバーされるため、QueenSlimeのみエラー）
+        /// （Slimeはabstractなので、KingSlimeとQueenSlimeがすべて処理されればカバーされる。QueenSlimeのみエラー）
         /// </summary>
         [Fact]
         public async Task WhenMultipleInheritance_MissingConcreteType_Diagnostic()
@@ -359,7 +360,7 @@ using ExhaustiveSwitch;
 public abstract class Enemy { }
 
 [Case]
-public class Slime : Enemy { }
+public abstract class Slime : Enemy { }
 
 [Case]
 public sealed class KingSlime : Slime { }
@@ -624,6 +625,138 @@ public class Program
                 .WithArguments("IEnemy", "Orc");
 
             await VerifyCodeFixAsync(testCode, expected, fixedCode);
+        }
+
+        /// <summary>
+        /// Interface + 入れ子のExhaustive: 中間クラスが[Case, Exhaustive]の場合、中間クラスを処理すれば網羅OK
+        /// </summary>
+        [Fact]
+        public async Task WhenNestedExhaustiveInterface_IntermediateClass_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface ISample { }
+
+[Case]
+public sealed class ConcreteA : ISample { }
+
+[Case, Exhaustive]
+public class ConcreteB : ISample { }
+
+[Case]
+public sealed class ConcreteB1 : ConcreteB { }
+
+[Case]
+public sealed class ConcreteB2 : ConcreteB { }
+
+public class Program
+{
+    public void Process(ISample sample)
+    {
+        switch (sample)
+        {
+            case ConcreteA a:
+                break;
+            case ConcreteB b:
+                break;
+        }
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
+        /// <summary>
+        /// Interface + 入れ子のExhaustive: 中間クラスが[Case, Exhaustive]で、子クラスのみ処理した場合、中間クラスが不足
+        /// （中間クラスがabstractでない場合、インスタンス化可能なので明示的な処理が必要）
+        /// </summary>
+        [Fact]
+        public async Task WhenNestedExhaustiveInterface_OnlyChildClasses_Diagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface ISample { }
+
+[Case]
+public sealed class ConcreteA : ISample { }
+
+[Case, Exhaustive]
+public class ConcreteB : ISample { }
+
+[Case]
+public sealed class ConcreteB1 : ConcreteB { }
+
+[Case]
+public sealed class ConcreteB2 : ConcreteB { }
+
+public class Program
+{
+    public void Process(ISample sample)
+    {
+        {|#0:switch (sample)
+        {
+            case ConcreteA a:
+                break;
+            case ConcreteB1 b1:
+                break;
+            case ConcreteB2 b2:
+                break;
+        }|}
+    }
+}";
+
+            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("ISample", "ConcreteB");
+
+            await VerifyAnalyzerAsync(test, expected);
+        }
+
+        /// <summary>
+        /// Interface + 入れ子のExhaustive: 中間クラスがabstractで[Case, Exhaustive]の場合、子クラスのみで網羅OK
+        /// </summary>
+        [Fact]
+        public async Task WhenNestedExhaustiveInterface_AbstractIntermediateClass_OnlyChildClasses_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface ISample { }
+
+[Case]
+public sealed class ConcreteA : ISample { }
+
+[Case, Exhaustive]
+public abstract class ConcreteB : ISample { }
+
+[Case]
+public sealed class ConcreteB1 : ConcreteB { }
+
+[Case]
+public sealed class ConcreteB2 : ConcreteB { }
+
+public class Program
+{
+    public void Process(ISample sample)
+    {
+        switch (sample)
+        {
+            case ConcreteA a:
+                break;
+            case ConcreteB1 b1:
+                break;
+            case ConcreteB2 b2:
+                break;
+        }
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
         }
 
         private static async Task VerifyAnalyzerAsync(string source, params DiagnosticResult[] expected)

@@ -15,7 +15,7 @@ public sealed class ConcreteA : ISample
 }
 
 [Case, Exhaustive]
-public class ConcreteB : ISample
+public abstract class ConcreteB : ISample
 {
     
 }

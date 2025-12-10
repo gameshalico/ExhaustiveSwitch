@@ -81,7 +81,7 @@ namespace ExhaustiveSwitch.Analyzer
             // ヘルパー: 型をチェックしてマップに追加する
             void ProcessType(INamedTypeSymbol typeSymbol)
             {
-                // 1. [Case] 属性がついているかチェック 
+                // 1. [Case] 属性がついているかチェック
                 if (!TypeAnalysisHelpers.HasAttribute(typeSymbol, caseAttributeType))
                 {
                     foreach (var nested in typeSymbol.GetTypeMembers())
@@ -90,11 +90,11 @@ namespace ExhaustiveSwitch.Analyzer
                     }
                     return;
                 }
-        
-                // 2. [Case]がついているなら、その親となる [Exhaustive] 型を探す
-                var exhaustiveBase = TypeAnalysisHelpers.FindExhaustiveBaseType(typeSymbol, exhaustiveAttributeType);
-                
-                if (exhaustiveBase != null)
+
+                // 2. [Case]がついているなら、その親となる [Exhaustive] 型をすべて探す
+                var exhaustiveBases = TypeAnalysisHelpers.FindAllExhaustiveTypes(typeSymbol, exhaustiveAttributeType);
+
+                foreach (var exhaustiveBase in exhaustiveBases)
                 {
                     if (!map.TryGetValue(exhaustiveBase, out var children))
                     {
@@ -103,7 +103,7 @@ namespace ExhaustiveSwitch.Analyzer
                     }
                     children.Add(typeSymbol);
                 }
-        
+
                 // ネストされた型の再帰スキャン
                 foreach (var nested in typeSymbol.GetTypeMembers())
                 {
@@ -308,22 +308,31 @@ namespace ExhaustiveSwitch.Analyzer
             }
         
             // 条件3: すべての「直接の子」がカバーされている
+            // ただし、型がabstractまたはsealedでない場合、その型自体もインスタンス化可能なため、
+            // 子クラスのカバレッジだけでは不十分（明示的な処理が必要）
             if (hierarchyInfo.DirectChildrenMap.TryGetValue(type, out var children) && children.Count > 0)
             {
-                bool allChildrenCovered = true;
-                foreach (var child in children)
+                // abstractまたはsealedの場合のみ、子クラスのカバレッジで親をカバー可能
+                // interfaceの場合も子クラスのカバレッジで十分
+                bool canBeCoveredByChildren = type.IsAbstract || type.IsSealed || type.TypeKind == TypeKind.Interface;
+
+                if (canBeCoveredByChildren)
                 {
-                    if (!CheckCoverageRecursive(child, explicitlyHandled, hierarchyInfo, memo))
+                    bool allChildrenCovered = true;
+                    foreach (var child in children)
                     {
-                        allChildrenCovered = false;
-                        break;
+                        if (!CheckCoverageRecursive(child, explicitlyHandled, hierarchyInfo, memo))
+                        {
+                            allChildrenCovered = false;
+                            break;
+                        }
                     }
-                }
-        
-                if (allChildrenCovered)
-                {
-                    memo[type] = true;
-                    return true;
+
+                    if (allChildrenCovered)
+                    {
+                        memo[type] = true;
+                        return true;
+                    }
                 }
             }
         
