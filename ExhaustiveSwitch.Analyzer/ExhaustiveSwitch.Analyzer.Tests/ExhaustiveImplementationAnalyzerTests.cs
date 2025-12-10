@@ -73,7 +73,7 @@ public class Program
     }
 }";
 
-            var expected = new DiagnosticResult("EIA0001", DiagnosticSeverity.Error)
+            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
                 .WithLocation(0)
                 .WithArguments("IEnemy", "Orc");
 
@@ -112,7 +112,7 @@ public class Program
     }
 }";
 
-            var expected = new DiagnosticResult("EIA0001", DiagnosticSeverity.Error)
+            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
                 .WithLocation(0)
                 .WithArguments("IEnemy", "Orc");
 
@@ -182,7 +182,7 @@ public class Program
     }
 }";
 
-            var expected = new DiagnosticResult("EIA0001", DiagnosticSeverity.Error)
+            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
                 .WithLocation(0)
                 .WithArguments("IEnemy", "Orc");
 
@@ -219,7 +219,7 @@ public class Program
     }
 }";
 
-            var expected = new DiagnosticResult("EIA0001", DiagnosticSeverity.Error)
+            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
                 .WithLocation(0)
                 .WithArguments("Enemy", "Orc");
 
@@ -384,7 +384,7 @@ public class Program
     }
 }";
 
-            var expected = new DiagnosticResult("EIA0001", DiagnosticSeverity.Error)
+            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
                 .WithLocation(0)
                 .WithArguments("Enemy", "QueenSlime");
 
@@ -427,7 +427,7 @@ public class Program
     }
 }";
 
-            var expected = new DiagnosticResult("EIA0001", DiagnosticSeverity.Error)
+            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
                 .WithLocation(0)
                 .WithArguments("Enemy", "Orc");
 
@@ -491,7 +491,7 @@ public class Program
     }
 }";
 
-            var expected = new DiagnosticResult("EIA0001", DiagnosticSeverity.Error)
+            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
                 .WithLocation(0)
                 .WithArguments("IEnemy", "Orc");
 
@@ -553,7 +553,7 @@ public class Program
     }
 }";
 
-            var expected = new DiagnosticResult("EIA0001", DiagnosticSeverity.Error)
+            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
                 .WithLocation(0)
                 .WithArguments("IEnemy", "Orc");
 
@@ -621,7 +621,7 @@ public class Program
     }
 }";
 
-            var expected = new DiagnosticResult("EIA0001", DiagnosticSeverity.Error)
+            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
                 .WithLocation(0)
                 .WithArguments("IEnemy", "Orc");
 

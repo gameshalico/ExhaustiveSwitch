@@ -19,7 +19,7 @@ namespace ExhaustiveSwitch.Analyzer
     {
         private const string Title = "不足しているケースを追加";
 
-        public sealed override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create("EIA0001");
+        public sealed override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create("EXH0001");
 
         public sealed override FixAllProvider GetFixAllProvider()
         {
@@ -41,7 +41,7 @@ namespace ExhaustiveSwitch.Analyzer
             {
                 // このswitch文に関連するすべての診断を取得
                 var allDiagnostics = context.Diagnostics
-                    .Where(d => d.Id == "EIA0001")
+                    .Where(d => d.Id == "EXH0001")
                     .ToList();
 
                 // 複数の診断がある場合、すべてのケースを一括追加するCodeFix
@@ -78,7 +78,7 @@ namespace ExhaustiveSwitch.Analyzer
             {
                 // このswitch式に関連するすべての診断を取得
                 var allDiagnostics = context.Diagnostics
-                    .Where(d => d.Id == "EIA0001")
+                    .Where(d => d.Id == "EXH0001")
                     .ToArray();
 
                 // 複数の診断がある場合、すべてのケースを一括追加するCodeFix

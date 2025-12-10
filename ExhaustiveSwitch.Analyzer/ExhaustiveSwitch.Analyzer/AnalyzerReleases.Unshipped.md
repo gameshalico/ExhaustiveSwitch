@@ -5,4 +5,4 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
-EIA0001 | Usage | Error | Exhaustive 型のケースが switch で処理されていません
+EXH0001 | Usage | Error | Exhaustive 型のケースが switch で処理されていません

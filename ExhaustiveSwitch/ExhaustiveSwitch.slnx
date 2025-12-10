@@ -63,8 +63,8 @@
   <Project Path="Unity.VisualScripting.Shared.Editor.csproj" />
   <Project Path="SampleMultiAssembly.Implementation.csproj" />
   <Project Path="Unity.2D.Aseprite.Common.csproj" />
-  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.PlasticSCM.Editor.Entities.csproj" />
   <Project Path="ExhaustiveSwitch.csproj" />
   <Project Path="Unity.Collections.Editor.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
 </Solution>

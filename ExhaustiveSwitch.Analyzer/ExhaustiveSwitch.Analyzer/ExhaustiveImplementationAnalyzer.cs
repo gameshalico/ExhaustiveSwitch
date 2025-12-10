@@ -14,7 +14,7 @@ namespace ExhaustiveSwitch.Analyzer
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class ExhaustiveSwitchAnalyzer : DiagnosticAnalyzer
     {
-        private const string DiagnosticId = "EIA0001";
+        private const string DiagnosticId = "EXH0001";
 
         private static readonly LocalizableString Title = "網羅性の不足";
         private static readonly LocalizableString MessageFormat = "Exhaustive 型 '{0}' の '{1}' ケースが switch で処理されていません。";

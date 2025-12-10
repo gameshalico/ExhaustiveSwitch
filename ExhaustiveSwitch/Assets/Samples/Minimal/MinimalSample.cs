@@ -35,10 +35,11 @@ public sealed class ConcreteB2 : ConcreteB
 
 
 
-public class Sample
+public class MinimalSample
 {
     public void Execute(ISample sample)
     {
+
         switch (sample)
         {
             case ConcreteA a:

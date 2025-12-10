@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### 目的
 - `[Exhaustive]`属性を持つインターフェース/抽象クラスに対するswitch処理で、`[ExhaustiveCase]`属性を持つすべての具象型が明示的に処理されているかを検証
-- 網羅性が不足している場合、コンパイルエラー（EIA0001）を発行
+- 網羅性が不足している場合、コンパイルエラー（EXH0001）を発行
 - `default`やディスカードパターン(`_`)があっても、明示的な具象型の処理が不足していればエラーを出力（意図的に網羅性を強制）
 
 ## ビルドとテストのコマンド
@@ -47,7 +47,7 @@ Analyzerは以下のステップで検証を行う必要があります：
 
 1. **$S_{expected}$の特定**: プロジェクト内および参照アセンブリから、`[Exhaustive]`型を継承/実装し、かつ`[ExhaustiveCase]`属性を持つすべての具象クラスを収集
 2. **$S_{actual}$の特定**: switch文/式のパターンから、明示的に処理されている具象型を抽出
-3. **エラー判定**: $S_{expected} \setminus S_{actual} \neq \emptyset$ の場合、診断ID **EIA0001** (Error) を発行
+3. **エラー判定**: $S_{expected} \setminus S_{actual} \neq \emptyset$ の場合、診断ID **EXH0001** (Error) を発行
 
 #### 3. 重要な制約
 - **上位型マッチングは網羅に含まれない**: `case IEnemy e:` のような上位型でのマッチングは、明示的な具象型処理として扱わない
@@ -59,7 +59,7 @@ Analyzerは以下のステップで検証を行う必要があります：
 
 | 診断ID | レベル | メッセージ |
 |--------|--------|-----------|
-| EIA0001 | Error | Exhaustive 型 '{0}' の '{1}' ケースが switch で処理されていません。 |
+| EXH0001 | Error | Exhaustive 型 '{0}' の '{1}' ケースが switch で処理されていません。 |
 
 ## 主要ファイルの構成
 
