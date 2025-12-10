@@ -1,4 +1,5 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace ExhaustiveSwitch.Analyzer
 {
@@ -25,7 +26,14 @@ namespace ExhaustiveSwitch.Analyzer
             }
 
             // 最初の文字を小文字に変換
-            return char.ToLower(name[0]) + name.Substring(1);
+            var result = char.ToLower(name[0]) + name.Substring(1);
+            
+            // 予約後の場合は@を付与
+            if (SyntaxFacts.GetKeywordKind(result) != SyntaxKind.None)
+            {
+                result = "@" + result;
+            }
+            return result;
         }
     }
 }

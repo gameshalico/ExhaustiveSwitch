@@ -486,7 +486,6 @@ public class Program
                 break;
             case Orc orc:
                 throw new System.NotImplementedException();
-                break;
         }
     }
 }";
@@ -614,7 +613,6 @@ public class Program
                 break;
             case Orc orc:
                 throw new System.NotImplementedException();
-                break;
             default:
                 break;
         }

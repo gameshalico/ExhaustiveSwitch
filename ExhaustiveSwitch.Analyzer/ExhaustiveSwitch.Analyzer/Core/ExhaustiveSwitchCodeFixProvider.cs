@@ -11,6 +11,7 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Formatting;
+using Microsoft.CodeAnalysis.Simplification;
 
 namespace ExhaustiveSwitch.Analyzer
 {
@@ -22,7 +23,7 @@ namespace ExhaustiveSwitch.Analyzer
         public sealed override FixAllProvider GetFixAllProvider()
         {
             // Fix Allは不要
-            return null;
+            return WellKnownFixAllProviders.BatchFixer;
         }
 
         public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)
@@ -216,14 +217,17 @@ namespace ExhaustiveSwitch.Analyzer
 
         private SwitchSectionSyntax CreateCaseSectionForType(INamedTypeSymbol type)
         {
-            var typeName = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+            var typeName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             var variableName = CodeGenerationHelpers.GetVariableName(type);
+            
+            var typeSyntax = SyntaxFactory.ParseTypeName(typeName)
+                .WithAdditionalAnnotations(Simplifier.Annotation);
 
             // case TypeName variableName:
             //     throw new NotImplementedException();
             var caseLabel = SyntaxFactory.CasePatternSwitchLabel(
                 SyntaxFactory.DeclarationPattern(
-                    SyntaxFactory.ParseTypeName(typeName),
+                    typeSyntax,
                     SyntaxFactory.SingleVariableDesignation(SyntaxFactory.Identifier(variableName))),
                 null,
                 SyntaxFactory.Token(SyntaxKind.ColonToken));
@@ -233,23 +237,24 @@ namespace ExhaustiveSwitch.Analyzer
                     SyntaxFactory.ParseTypeName("System.NotImplementedException"))
                 .WithArgumentList(SyntaxFactory.ArgumentList()));
 
-            var breakStatement = SyntaxFactory.BreakStatement();
-
             var section = SyntaxFactory.SwitchSection()
                 .AddLabels(caseLabel)
-                .AddStatements(throwStatement, breakStatement);
+                .AddStatements(throwStatement);
 
             return section;
         }
 
         private SwitchExpressionArmSyntax CreateSwitchArmForType(INamedTypeSymbol type)
         {
-            var typeName = type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+            var typeName = type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             var variableName = CodeGenerationHelpers.GetVariableName(type);
+            
+            var typeSyntax = SyntaxFactory.ParseTypeName(typeName)
+                .WithAdditionalAnnotations(Simplifier.Annotation);
 
             // TypeName variableName => throw new NotImplementedException(),
             var pattern = SyntaxFactory.DeclarationPattern(
-                SyntaxFactory.ParseTypeName(typeName),
+                typeSyntax,
                 SyntaxFactory.SingleVariableDesignation(SyntaxFactory.Identifier(variableName)));
 
             var throwExpression = SyntaxFactory.ThrowExpression(
