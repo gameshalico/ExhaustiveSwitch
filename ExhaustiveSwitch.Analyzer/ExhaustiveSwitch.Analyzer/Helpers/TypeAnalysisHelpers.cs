@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace ExhaustiveSwitch.Analyzer
 {
@@ -133,5 +134,48 @@ namespace ExhaustiveSwitch.Analyzer
 
             return casesToReport;
         }
+        
+        /// <summary>
+        /// パターンから型を抽出
+        /// </summary>
+        public static INamedTypeSymbol ExtractTypeFromPattern(SyntaxNode pattern, SemanticModel semanticModel)
+        {
+            switch (pattern)
+            {
+                // switch文: case Goblin g when ...:
+                case CasePatternSwitchLabelSyntax casePatternLabel:
+                    return ExtractTypeFromPatternSyntax(casePatternLabel.Pattern, semanticModel);
+
+                // switch式: Goblin g => ...
+                case DeclarationPatternSyntax declarationPattern:
+                    return ExtractTypeFromPatternSyntax(declarationPattern, semanticModel);
+
+                // その他のパターン
+                default:
+                    if (pattern is PatternSyntax patternSyntax)
+                        return ExtractTypeFromPatternSyntax(patternSyntax, semanticModel);
+                    break;
+            }
+
+            return null;
+        }
+
+        private static INamedTypeSymbol ExtractTypeFromPatternSyntax(PatternSyntax pattern, SemanticModel semanticModel)
+        {
+            switch (pattern)
+            {
+                case DeclarationPatternSyntax declarationPattern:
+                    var typeInfo = semanticModel.GetTypeInfo(declarationPattern.Type);
+                    return typeInfo.Type as INamedTypeSymbol;
+
+                case RecursivePatternSyntax recursivePattern when recursivePattern.Type != null:
+                    var recursiveTypeInfo = semanticModel.GetTypeInfo(recursivePattern.Type);
+                    return recursiveTypeInfo.Type as INamedTypeSymbol;
+
+                default:
+                    return null;
+            }
+        }
+
     }
 }
