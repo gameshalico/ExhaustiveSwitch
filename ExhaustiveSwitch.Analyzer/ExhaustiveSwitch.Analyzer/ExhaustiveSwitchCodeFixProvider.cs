@@ -52,24 +52,24 @@ namespace ExhaustiveSwitch.Analyzer
                 {
                     context.RegisterCodeFix(
                         CodeAction.Create(
-                            title: "すべての不足しているケースを追加",
+                            title: Resources.CodeFixAddAllCases,
                             createChangedDocument: c => AddMissingCasesToSwitchStatementAsync(context.Document, switchStatement, allDiagnostics, c),
                             equivalenceKey: "AddAllCases"),
                         allDiagnostics.ToArray());
                 }
-                
+
                 // 各診断に対して個別のCodeFixを登録
                 var individualActions = new List<CodeAction>();
                 foreach (var diag in allDiagnostics)
                 {
                     var typeName = GetMissingTypeNameFromDiagnostic(diag);
                     individualActions.Add(CodeAction.Create(
-                        title: $"'{typeName}' ケースを追加",
+                        title: string.Format(Resources.CodeFixAddSingleCase, typeName),
                         createChangedDocument: c => AddMissingCasesToSwitchStatementAsync(context.Document, switchStatement, new[] { diag }, c),
                         equivalenceKey: $"AddSingleCase_{typeName}"));
                 }
                 context.RegisterCodeFix(
-                    CodeAction.Create("個別のケースを追加...", individualActions.ToImmutableArray(), true),
+                    CodeAction.Create(Resources.CodeFixAddIndividualCases, individualActions.ToImmutableArray(), true),
                     allDiagnostics);
 
                 return;
@@ -89,24 +89,24 @@ namespace ExhaustiveSwitch.Analyzer
                 {
                     context.RegisterCodeFix(
                         CodeAction.Create(
-                            title: "すべての不足しているケースを追加",
+                            title: Resources.CodeFixAddAllCases,
                             createChangedDocument: c => AddMissingCasesToSwitchExpressionAsync(context.Document, switchExpression, allDiagnostics, c),
                             equivalenceKey: "AddAllCases"),
                         allDiagnostics);
                 }
-                
+
                 // 各診断に対して個別のCodeFixを登録
                 var individualActions = new List<CodeAction>();
                 foreach (var diag in allDiagnostics)
                 {
                     var typeName = GetMissingTypeNameFromDiagnostic(diag);
                     individualActions.Add(CodeAction.Create(
-                        title: $"'{typeName}' ケースを追加",
+                        title: string.Format(Resources.CodeFixAddSingleCase, typeName),
                         createChangedDocument: c => AddMissingCasesToSwitchExpressionAsync(context.Document, switchExpression, new[] { diag }, c),
                         equivalenceKey: $"AddSingleCase_{typeName}"));
                 }
                 context.RegisterCodeFix(
-                    CodeAction.Create("個別のケースを追加...", individualActions.ToImmutableArray(), true),
+                    CodeAction.Create(Resources.CodeFixAddIndividualCases, individualActions.ToImmutableArray(), true),
                     allDiagnostics);
             }
         }

@@ -16,9 +16,12 @@ namespace ExhaustiveSwitch.Analyzer
     {
         private const string DiagnosticId = "EXH0001";
 
-        private static readonly LocalizableString Title = "網羅性の不足";
-        private static readonly LocalizableString MessageFormat = "Exhaustive 型 '{0}' の '{1}' ケースが switch で処理されていません。";
-        private static readonly LocalizableString Description = "[Case]属性を持つすべての具象型が明示的に処理されている必要があります。";
+        private static readonly LocalizableString Title = new LocalizableResourceString(
+            nameof(Resources.AnalyzerTitle), Resources.ResourceManager, typeof(Resources));
+        private static readonly LocalizableString MessageFormat = new LocalizableResourceString(
+            nameof(Resources.AnalyzerMessageFormat), Resources.ResourceManager, typeof(Resources));
+        private static readonly LocalizableString Description = new LocalizableResourceString(
+            nameof(Resources.AnalyzerDescription), Resources.ResourceManager, typeof(Resources));
         private const string Category = "Usage";
 
         private static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
