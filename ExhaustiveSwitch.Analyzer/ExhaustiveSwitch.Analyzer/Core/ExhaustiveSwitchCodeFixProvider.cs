@@ -104,18 +104,15 @@ namespace ExhaustiveSwitch.Analyzer
             }
         }
 
-        private async Task<Document> AddMissingCasesToSwitchStatementAsync(
+        private async Task<List<INamedTypeSymbol>> GetMissingTypesFromDiagnosticsAsync(
             Document document,
-            SwitchStatementSyntax switchStatement,
             IEnumerable<Diagnostic> diagnostics,
             CancellationToken cancellationToken)
         {
-            var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-
-            if (root == null || semanticModel == null)
+            if (semanticModel == null)
             {
-                return document;
+                return new List<INamedTypeSymbol>();
             }
 
             var missingTypes = new List<INamedTypeSymbol>();
@@ -128,6 +125,22 @@ namespace ExhaustiveSwitch.Analyzer
                 }
             }
 
+            return missingTypes;
+        }
+
+        private async Task<Document> AddMissingCasesToSwitchStatementAsync(
+            Document document,
+            SwitchStatementSyntax switchStatement,
+            IEnumerable<Diagnostic> diagnostics,
+            CancellationToken cancellationToken)
+        {
+            var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+            if (root == null)
+            {
+                return document;
+            }
+
+            var missingTypes = await GetMissingTypesFromDiagnosticsAsync(document, diagnostics, cancellationToken).ConfigureAwait(false);
             if (missingTypes.Count == 0)
             {
                 return document;
@@ -159,23 +172,12 @@ namespace ExhaustiveSwitch.Analyzer
             CancellationToken cancellationToken)
         {
             var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-            var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-
-            if (root == null || semanticModel == null)
+            if (root == null)
             {
                 return document;
             }
 
-            var missingTypes = new List<INamedTypeSymbol>();
-            foreach (var diagnostic in diagnostics)
-            {
-                var missingType = DiagnosticHelpers.GetMissingTypeFromDiagnostic(diagnostic, semanticModel.Compilation);
-                if (missingType != null)
-                {
-                    missingTypes.Add(missingType);
-                }
-            }
-
+            var missingTypes = await GetMissingTypesFromDiagnosticsAsync(document, diagnostics, cancellationToken).ConfigureAwait(false);
             if (missingTypes.Count == 0)
             {
                 return document;

@@ -114,8 +114,14 @@ namespace ExhaustiveSwitch.Analyzer
                     }
                 }
 
-                // ネストされた型の再帰スキャン（[Case]属性の有無に関わらず常に処理）
-                foreach (var nested in typeSymbol.GetTypeMembers())
+                // ネストされた型の再帰スキャン
+                var nestedTypes = typeSymbol.GetTypeMembers();
+                if (nestedTypes.IsEmpty)
+                {
+                    return;
+                }
+
+                foreach (var nested in nestedTypes)
                 {
                     ProcessType(nested);
                 }

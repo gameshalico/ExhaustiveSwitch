@@ -7,12 +7,24 @@ namespace ExhaustiveSwitch.Analyzer
 {
     internal static class TypeAnalysisHelpers
     {
+        /// <summary>
+        /// シンボルが指定された属性を持つかどうかを判定します。
+        /// </summary>
+        /// <param name="symbol">チェック対象のシンボル</param>
+        /// <param name="attributeType">属性の型</param>
+        /// <returns>属性を持つ場合はtrue</returns>
         public static bool HasAttribute(ISymbol symbol, INamedTypeSymbol attributeType)
         {
             return symbol.GetAttributes().Any(attr =>
                 SymbolEqualityComparer.Default.Equals(attr.AttributeClass, attributeType));
         }
 
+        /// <summary>
+        /// 型または型の基底型/実装インターフェースから、最初の[Exhaustive]型を検索します。
+        /// </summary>
+        /// <param name="type">検索対象の型</param>
+        /// <param name="exhaustiveAttributeType">ExhaustiveAttribute型</param>
+        /// <returns>[Exhaustive]属性を持つ最初の型、見つからない場合はnull</returns>
         public static INamedTypeSymbol FindExhaustiveBaseType(ITypeSymbol type, INamedTypeSymbol exhaustiveAttributeType)
         {
             // 型自体をチェック
@@ -45,6 +57,12 @@ namespace ExhaustiveSwitch.Analyzer
             return null;
         }
 
+        /// <summary>
+        /// 型または型の基底型/実装インターフェースから、すべての[Exhaustive]型を検索します。
+        /// </summary>
+        /// <param name="typeSymbol">検索対象の型</param>
+        /// <param name="exhaustiveAttributeType">ExhaustiveAttribute型</param>
+        /// <returns>[Exhaustive]属性を持つすべての型のリスト</returns>
         public static List<INamedTypeSymbol> FindAllExhaustiveTypes(INamedTypeSymbol typeSymbol, INamedTypeSymbol exhaustiveAttributeType)
         {
             var exhaustiveTypes = new List<INamedTypeSymbol>();
@@ -79,8 +97,20 @@ namespace ExhaustiveSwitch.Analyzer
             return exhaustiveTypes;
         }
 
+        /// <summary>
+        /// 型が指定された基底型を実装または継承しているかを判定します。
+        /// </summary>
+        /// <param name="typeSymbol">チェック対象の型</param>
+        /// <param name="baseType">基底型またはインターフェース</param>
+        /// <returns>実装/継承している場合はtrue、型自身が一致する場合もtrueを返す</returns>
         public static bool IsImplementingOrDerivedFrom(INamedTypeSymbol typeSymbol, INamedTypeSymbol baseType)
         {
+            // 型自身が一致するケース
+            if (SymbolEqualityComparer.Default.Equals(typeSymbol, baseType))
+            {
+                return true;
+            }
+
             // インターフェースの実装をチェック
             if (baseType.TypeKind == TypeKind.Interface)
             {
@@ -99,9 +129,15 @@ namespace ExhaustiveSwitch.Analyzer
                 current = current.BaseType;
             }
 
-            return SymbolEqualityComparer.Default.Equals(typeSymbol, baseType);
+            return false;
         }
 
+        /// <summary>
+        /// switchパターンから型情報を抽出します。
+        /// </summary>
+        /// <param name="pattern">パターン構文ノード</param>
+        /// <param name="semanticModel">セマンティックモデル</param>
+        /// <returns>抽出された型、取得できない場合はnull</returns>
         public static INamedTypeSymbol ExtractTypeFromPattern(SyntaxNode pattern, SemanticModel semanticModel)
         {
             switch (pattern)
@@ -125,6 +161,9 @@ namespace ExhaustiveSwitch.Analyzer
             return null;
         }
 
+        /// <summary>
+        /// パターン構文から型情報を抽出します。
+        /// </summary>
         private static INamedTypeSymbol ExtractTypeFromPatternSyntax(PatternSyntax pattern, SemanticModel semanticModel)
         {
             switch (pattern)
