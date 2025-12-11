@@ -8,7 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace ExhaustiveSwitch.Analyzer.Tests
+namespace ExhaustiveSwitch.Analyzer.Tests.Core
 {
     public class ExhaustiveSwitchAnalyzerTests
     {

@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CSharp.Testing;
 using Xunit;
 
-namespace ExhaustiveSwitch.Analyzer.Tests
+namespace ExhaustiveSwitch.Analyzer.Tests.Core
 {
     public class ExhaustiveSwitchCodeFixTests
     {
