@@ -48,8 +48,10 @@ namespace ExhaustiveSwitch.Analyzer
                     "ExhaustiveSwitch.CaseAttribute");
 
                 if (exhaustiveAttributeType == null || caseAttributeType == null)
+                {
                     return;
-                
+                }
+
                 var lazyInheritanceMap = new Lazy<ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo>>(
                     () => BuildInheritanceMap(compilationContext.Compilation, exhaustiveAttributeType, caseAttributeType), true);
                 
@@ -300,7 +302,7 @@ namespace ExhaustiveSwitch.Analyzer
             // 2. グラフ探索でカバレッジを判定
             var finalHandledCases = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
         
-            // メモ化用辞書（再帰呼び出しのコスト削減と循環参照回避）
+            // メモ化用辞書
             // true: カバー済み, false: 未カバー
             var memo = new Dictionary<INamedTypeSymbol, bool>(SymbolEqualityComparer.Default);
         
@@ -340,8 +342,7 @@ namespace ExhaustiveSwitch.Analyzer
             }
         
             // 条件2: 親（先祖）のいずれかが明示的に書かれている
-            // ※ここが重要：親が複数いる場合、どれか1つでもカバーされていれば、自分もカバーされたとみなす
-            // （例: switch(interface) で interface で受けていれば、実装クラスはすべてOK）
+            // 親が複数いる場合、どれか1つでもカバーされていれば、自分もカバーされたとみなす
             if (IsAnyAncestorExplicitlyHandled(type, explicitlyHandled, hierarchyInfo))
             {
                 memo[type] = true;
@@ -396,14 +397,20 @@ namespace ExhaustiveSwitch.Analyzer
             // 初期親を追加
             if (hierarchyInfo.DirectParentsMap.TryGetValue(type, out var parents))
             {
-                foreach (var p in parents) queue.Enqueue(p);
+                foreach (var p in parents)
+                {
+                    queue.Enqueue(p);
+                }
             }
         
             while (queue.Count > 0)
             {
                 var current = queue.Dequeue();
-                if (!visited.Add(current)) continue;
-        
+                if (!visited.Add(current))
+                {
+                    continue;
+                }
+
                 if (explicitlyHandled.Contains(current))
                 {
                     return true;
@@ -412,7 +419,10 @@ namespace ExhaustiveSwitch.Analyzer
                 // さらに上の親へ
                 if (hierarchyInfo.DirectParentsMap.TryGetValue(current, out var grandParents))
                 {
-                    foreach (var gp in grandParents) queue.Enqueue(gp);
+                    foreach (var gp in grandParents)
+                    {
+                        queue.Enqueue(gp);
+                    }
                 }
             }
         
@@ -426,7 +436,9 @@ namespace ExhaustiveSwitch.Analyzer
         {
             // 自分自身の場合はtrue
             if (SymbolEqualityComparer.Default.Equals(assembly, targetAssembly))
+            {
                 return true;
+            }
 
             // 探索済みのアセンブリを記録（循環参照対策）
             var visited = new HashSet<IAssemblySymbol>(SymbolEqualityComparer.Default);
@@ -437,13 +449,17 @@ namespace ExhaustiveSwitch.Analyzer
             {
                 var current = queue.Dequeue();
                 if (!visited.Add(current))
+                {
                     continue;
+                }
 
                 // 参照しているアセンブリをチェック
                 foreach (var referencedAssemblyIdentity in current.Modules.SelectMany(m => m.ReferencedAssemblies))
                 {
                     if (referencedAssemblyIdentity.Name == targetAssembly.Identity.Name)
+                    {
                         return true;
+                    }
 
                     // Compilationから参照先のアセンブリシンボルを取得して再帰的にチェック
                     foreach (var reference in compilation.References)

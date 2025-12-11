@@ -22,7 +22,7 @@ namespace ExhaustiveSwitch.Analyzer
         
         public sealed override FixAllProvider GetFixAllProvider()
         {
-            // Fix Allは不要
+            // Fix Allは見づらい上に使ってほしくないため、未実装とする
             return null;
         }
 
@@ -139,7 +139,9 @@ namespace ExhaustiveSwitch.Analyzer
             }
 
             if (missingTypes.Count == 0)
+            {
                 return document;
+            }
 
             // 既存のsectionsの最後（default以外）に追加
             var sections = switchStatement.Sections;
@@ -190,7 +192,9 @@ namespace ExhaustiveSwitch.Analyzer
             }
 
             if (missingTypes.Count == 0)
+            {
                 return document;
+            }
 
             // 既存のarmsの最後（discard以外）に追加
             var arms = switchExpression.Arms;

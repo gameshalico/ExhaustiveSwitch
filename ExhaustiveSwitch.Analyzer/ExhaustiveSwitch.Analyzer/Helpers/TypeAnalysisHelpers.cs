@@ -26,13 +26,17 @@ namespace ExhaustiveSwitch.Analyzer
         {
             // 型自体をチェック
             if (type is INamedTypeSymbol namedType && HasAttribute(namedType, exhaustiveAttributeType))
+            {
                 return namedType;
+            }
 
             // インターフェースをチェック
             foreach (var iface in type.AllInterfaces)
             {
                 if (HasAttribute(iface, exhaustiveAttributeType))
+                {
                     return iface;
+                }
             }
 
             // 基底クラスをチェック
@@ -40,7 +44,10 @@ namespace ExhaustiveSwitch.Analyzer
             while (baseType != null)
             {
                 if (HasAttribute(baseType, exhaustiveAttributeType))
+                {
                     return baseType;
+                }
+
                 baseType = baseType.BaseType;
             }
 
@@ -56,13 +63,17 @@ namespace ExhaustiveSwitch.Analyzer
 
             // 型自体をチェック
             if (HasAttribute(typeSymbol, exhaustiveAttributeType))
+            {
                 exhaustiveTypes.Add(typeSymbol);
+            }
 
             // インターフェースをチェック
             foreach (var iface in typeSymbol.AllInterfaces)
             {
                 if (HasAttribute(iface, exhaustiveAttributeType))
+                {
                     exhaustiveTypes.Add(iface);
+                }
             }
 
             // 基底クラスをチェック
@@ -70,7 +81,10 @@ namespace ExhaustiveSwitch.Analyzer
             while (baseType != null)
             {
                 if (HasAttribute(baseType, exhaustiveAttributeType))
+                {
                     exhaustiveTypes.Add(baseType);
+                }
+
                 baseType = baseType.BaseType;
             }
 
@@ -93,7 +107,10 @@ namespace ExhaustiveSwitch.Analyzer
             while (current != null)
             {
                 if (SymbolEqualityComparer.Default.Equals(current, baseType))
+                {
                     return true;
+                }
+
                 current = current.BaseType;
             }
 
@@ -118,7 +135,10 @@ namespace ExhaustiveSwitch.Analyzer
                 // その他のパターン
                 default:
                     if (pattern is PatternSyntax patternSyntax)
+                    {
                         return ExtractTypeFromPatternSyntax(patternSyntax, semanticModel);
+                    }
+
                     break;
             }
 

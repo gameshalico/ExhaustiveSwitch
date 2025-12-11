@@ -55,8 +55,11 @@ namespace ExhaustiveSwitch.Analyzer
             var queue = new Queue<INamedTypeSymbol>();
     
             // 探索開始：BaseType
-            if (type.BaseType != null) queue.Enqueue(type.BaseType);
-            
+            if (type.BaseType != null)
+            {
+                queue.Enqueue(type.BaseType);
+            }
+
             // 探索開始：Interfaces
             foreach (var iface in type.Interfaces)
             {
@@ -67,8 +70,11 @@ namespace ExhaustiveSwitch.Analyzer
             {
                 var current = queue.Dequeue();
     
-                if (!visited.Add(current)) continue;
-    
+                if (!visited.Add(current))
+                {
+                    continue;
+                }
+
                 // ヒットした -> これ以上奥（親の親）は探さない（直近の親が担当するため）
                 if (allCases.Contains(current))
                 {

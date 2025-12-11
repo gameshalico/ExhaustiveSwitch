@@ -14,7 +14,9 @@ namespace ExhaustiveSwitch.Analyzer
         public static string GetFullMetadataName(INamedTypeSymbol type)
         {
             if (type == null)
+            {
                 return string.Empty;
+            }
 
             var parts = new List<string>();
             var currentType = type;
@@ -39,7 +41,9 @@ namespace ExhaustiveSwitch.Analyzer
         public static string GetNamespaceName(INamespaceSymbol namespaceSymbol)
         {
             if (namespaceSymbol == null || namespaceSymbol.IsGlobalNamespace)
+            {
                 return string.Empty;
+            }
 
             var parts = new List<string>();
             var current = namespaceSymbol;
