@@ -6,7 +6,7 @@
 
 これにより、以下のようなメリットを得ることができます
 - 新しくクラスを追加した際の考慮漏れを防止できる
-- 型安全な型による処理の分岐が実現できる (Visitorと違い、抽象レイヤーが具象レイヤーを知る必要がない)
+- 型安全な型による処理の分岐が実現できる (Visitorパターンと違い、抽象レイヤーが具象レイヤーを知る必要がない、抽象的に扱える)
 
 また、CodeFixProvider による、網羅されていないケースの追加にも対応しています。
 
@@ -15,8 +15,6 @@
 
 ## 使用方法
 
-### サンプル
-
 ```csharp
 using ExhaustiveSwitch;
 
@@ -24,19 +22,25 @@ using ExhaustiveSwitch;
 [Exhaustive]
 public interface IEnemy
 {
-    void Attack();
+    public void Attack();
 }
 
-// 各具象クラスに[Case]属性を付与
-[Case]
-public class Goblin : IEnemy
+public interface IWalkable
 {
-    public void Attack() { }
+    public void Walk();
 }
 
 public interface IFlyable
 {
     public void Fly() { }
+}
+
+// 各具象クラスに[Case]属性を付与
+[Case]
+public class Goblin : IEnemy, IWalkable
+{
+    public void Attack() { }
+    public void Walk() { }
 }
 
 [Case]
@@ -55,7 +59,7 @@ public class Harpy : IEnemy, IFlyable
 
 public void ProcessEnemy(IEnemy enemy)
 {
-    // 具象型で分岐
+    // 具象型で分岐 (新たに敵が実装されるとエラー)
     switch (enemy)
     {
         case Goblin goblin:
@@ -69,21 +73,21 @@ public void ProcessEnemy(IEnemy enemy)
             break;
     }
 
-    // インターフェース型で分岐
+    // インターフェース型で分岐 (歩くのでも、飛行するのでもない型が実装されるとエラー)
     switch (enemy)
     {
-        case Goblin goblin:
-            // Goblin専用の処理
+        case IWalkable walkable:
+            // 歩く敵の処理 (Goblin)
             break;
         case IFlyable flyable:
             // 飛行する敵の処理（DragonとHarpy）
             break;
     }
 }
+
 ```
 
-### 活用法
-その他のサンプルは、[Samples](ExhaustiveSwitch/Assets/Samples/README.md) を参照してください。
+その他の使用方法は、[Samples](ExhaustiveSwitch/Assets/Samples/README.md) を参照してください。
 
 ### エラーメッセージ
 
