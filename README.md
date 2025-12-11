@@ -1,19 +1,21 @@
 # ExhaustiveSwitch
 
-**ExhaustiveSwitch** は、Roslyn Analyzerを使用して、`switch`文/式における継承階層の網羅性を強制するライブラリです。
-`[Exhaustive]`属性と`[Case]`属性を使用することで、
-switch文/式で扱うべき型が処理されていないことをエラーとして検出することができます。
+**ExhaustiveSwitch** は、Roslyn Analyzerを使用して、`switch`文/式における継承階層の網羅を強制するライブラリです。
 
-複数のアセンブリをまたいでも動作し、型安全に型によるパターンマッチングを行うことを可能にします。
+`[Exhaustive]`属性と`[Case]`属性を使用することで、`switch`文/式で扱うべき型が処理されていないことをエラーとして検出することができます。
 
-また、CodeFixProvider により、網羅されていないケースを追加することができます。
+これにより、以下のようなメリットを得ることができます
+- 新しくクラスを追加した際の考慮漏れを防止できる
+- 型安全な型による処理の分岐が実現できる (Visitorと違い、抽象レイヤーが具象レイヤーを知る必要がない)
+
+また、CodeFixProvider による、網羅されていないケースの追加にも対応しています。
 
 ![](/docs/images/code-fix.png)
 
 
 ## 使用方法
 
-### 基本的な使い方
+### サンプル
 
 ```csharp
 using ExhaustiveSwitch;
@@ -53,47 +55,46 @@ public class Harpy : IEnemy, IFlyable
 
 public void ProcessEnemy(IEnemy enemy)
 {
-    // switch文で明示的にすべての具象型を処理する必要がある
+    // 具象型で分岐
     switch (enemy)
     {
         case Goblin goblin:
-            // Goblinの処理
+            // Goblin専用の処理
             break;
         case Dragon dragon:
-            // Dragonの処理
+            // Dragon専用の処理
             break;
         case Harpy harpy:
-            // Harpyの処理
+            // Harpy専用の処理
             break;
-        default:
-            throw new ArgumentOutOfRangeException(nameof(enemy), enemy, null);
     }
 
-    // 上位の型で処理することも可能
+    // インターフェース型で分岐
     switch (enemy)
     {
         case Goblin goblin:
-            // Goblinの処理
+            // Goblin専用の処理
             break;
         case IFlyable flyable:
-            // IFlyableの処理
+            // 飛行する敵の処理（DragonとHarpy）
             break;
-        default:
-            throw new ArgumentOutOfRangeException(nameof(enemy), enemy, null);
     }
 }
 ```
 
+### 活用法
+その他のサンプルは、[Samples](ExhaustiveSwitch/Assets/Samples/README.md) を参照してください。
+
 ### エラーメッセージ
 
-すべての`[Case]`型が明示的に処理されていない場合、以下のようなエラーが発行されます：
+すべての`[Case]`型が明示的に処理されていない場合、以下のようなエラーが発行されます。
 尚、上位の型で処理されている場合は、エラーは発行されません。
 
 ```
 エラー EXH0001: Exhaustive 型 'IEnemy' の 'Dragon' ケースが switch で処理されていません。
 ```
 
-`[Case]`属性が付与された型が`[Exhaustive]`属性を継承/実装していない場合、以下のような警告が発行されます：
+`[Case]`属性が付与された型が`[Exhaustive]`属性を継承/実装していない場合、以下のような警告が発行されます。
 
 ```
 警告 EXH0002: Case 属性が付与された型 'Goblin' は Exhaustive 型 'IEnemy' を継承/実装していません。
