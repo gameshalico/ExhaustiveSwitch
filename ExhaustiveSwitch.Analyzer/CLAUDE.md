@@ -45,7 +45,6 @@ dotnet test --filter "FullyQualifiedName~TestMethodName"
 - **ターゲットフレームワーク**: .NET Standard 2.0
 - **依存パッケージ**:
   - Microsoft.CodeAnalysis.CSharp 4.3.0
-  - ExhaustiveSwitch.Attributes (プロジェクト参照)
 - **言語バージョン**: C# 8.0
 
 #### 3. ExhaustiveSwitch.Analyzer.Tests
