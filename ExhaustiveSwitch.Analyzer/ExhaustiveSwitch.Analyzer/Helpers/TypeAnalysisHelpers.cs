@@ -99,6 +99,7 @@ namespace ExhaustiveSwitch.Analyzer
 
         /// <summary>
         /// 型が指定された基底型を実装または継承しているかを判定します。
+        /// ジェネリック型の場合、型引数の一致もチェックします。
         /// </summary>
         /// <param name="typeSymbol">チェック対象の型</param>
         /// <param name="baseType">基底型またはインターフェース</param>
@@ -111,6 +112,36 @@ namespace ExhaustiveSwitch.Analyzer
                 return true;
             }
 
+            // ジェネリック型の場合、型定義と型引数を両方チェック
+            if (baseType.IsGenericType)
+            {
+                // インターフェースの実装をチェック
+                if (baseType.TypeKind == TypeKind.Interface)
+                {
+                    foreach (var iface in typeSymbol.AllInterfaces)
+                    {
+                        if (IsGenericTypeMatch(iface, baseType))
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                // 基底クラスの継承をチェック
+                var current = typeSymbol.BaseType;
+                while (current != null)
+                {
+                    if (IsGenericTypeMatch(current, baseType))
+                    {
+                        return true;
+                    }
+                    current = current.BaseType;
+                }
+
+                return false;
+            }
+
+            // 非ジェネリック型の場合の既存の処理
             // インターフェースの実装をチェック
             if (baseType.TypeKind == TypeKind.Interface)
             {
@@ -118,18 +149,72 @@ namespace ExhaustiveSwitch.Analyzer
             }
 
             // 基底クラスの継承をチェック
-            var current = typeSymbol.BaseType;
-            while (current != null)
+            var currentType = typeSymbol.BaseType;
+            while (currentType != null)
             {
-                if (SymbolEqualityComparer.Default.Equals(current, baseType))
+                if (SymbolEqualityComparer.Default.Equals(currentType, baseType))
                 {
                     return true;
                 }
 
-                current = current.BaseType;
+                currentType = currentType.BaseType;
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// ジェネリック型が一致するかをチェックします。
+        /// 型定義（OriginalDefinition）と型引数の両方をチェックします。
+        /// </summary>
+        private static bool IsGenericTypeMatch(INamedTypeSymbol type1, INamedTypeSymbol type2)
+        {
+            // 型定義が一致するかチェック
+            if (!SymbolEqualityComparer.Default.Equals(type1.OriginalDefinition, type2.OriginalDefinition))
+            {
+                return false;
+            }
+
+            // 型引数の数が一致するかチェック
+            if (type1.TypeArguments.Length != type2.TypeArguments.Length)
+            {
+                return false;
+            }
+
+            // 各型引数が一致するかチェック
+            for (int i = 0; i < type1.TypeArguments.Length; i++)
+            {
+                if (!SymbolEqualityComparer.Default.Equals(type1.TypeArguments[i], type2.TypeArguments[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// ジェネリック型のCase型が、指定された構築型に一致するかをチェックします。
+        /// 例: Success<T> と Success<int> の場合、型引数を適用して一致するかを判定
+        /// </summary>
+        /// <param name="caseType">Case属性が付いたジェネリック型（例: Success<T>）</param>
+        /// <param name="constructedType">具体的な型引数を持つ型（例: Success<int>）</param>
+        /// <returns>一致する場合はtrue</returns>
+        public static bool IsGenericCaseMatch(INamedTypeSymbol caseType, INamedTypeSymbol constructedType)
+        {
+            // 型定義が一致しない場合は不一致
+            if (!SymbolEqualityComparer.Default.Equals(caseType.OriginalDefinition, constructedType.OriginalDefinition))
+            {
+                return false;
+            }
+
+            // 型引数の数が一致しない場合は不一致
+            if (caseType.TypeArguments.Length != constructedType.TypeArguments.Length)
+            {
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>

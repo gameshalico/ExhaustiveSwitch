@@ -105,12 +105,18 @@ namespace ExhaustiveSwitch.Analyzer
 
                     foreach (var exhaustiveBase in exhaustiveBases)
                     {
-                        if (!map.TryGetValue(exhaustiveBase, out var children))
+                        // ジェネリック型の場合は型定義（OriginalDefinition）をキーとして使用
+                        var exhaustiveBaseKey = exhaustiveBase.IsGenericType ? exhaustiveBase.OriginalDefinition : exhaustiveBase;
+
+                        if (!map.TryGetValue(exhaustiveBaseKey, out var children))
                         {
                             children = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-                            map[exhaustiveBase] = children;
+                            map[exhaustiveBaseKey] = children;
                         }
-                        children.Add(typeSymbol);
+
+                        // Case型もジェネリックの場合は型定義を格納
+                        var typeToAdd = typeSymbol.IsGenericType ? typeSymbol.OriginalDefinition : typeSymbol;
+                        children.Add(typeToAdd);
                     }
                 }
 
@@ -218,21 +224,30 @@ namespace ExhaustiveSwitch.Analyzer
                 return;
             }
 
+            // ジェネリック型の場合、型定義（OriginalDefinition）でマップを検索
+            var exhaustiveTypeKey = exhaustiveType.IsGenericType ? exhaustiveType.OriginalDefinition : exhaustiveType;
+
             // S_expected: [Exhaustive]な型に対応するすべての[Case]型を取得
-            if (hierarchyInfoMap.TryGetValue(exhaustiveType, out var hierarchyInfo) == false)
+            if (hierarchyInfoMap.TryGetValue(exhaustiveTypeKey, out var hierarchyInfo) == false)
             {
                 return;
             }
-            
+
+            // ジェネリック型の場合、型引数を適用
+            if (hierarchyInfo.IsGeneric && exhaustiveType.IsGenericType)
+            {
+                hierarchyInfo = hierarchyInfo.ApplyTypeArguments(exhaustiveType);
+            }
+
             var handledCases = CollectHandledCases(patterns, semanticModel, hierarchyInfo);
             var missingCases = new HashSet<INamedTypeSymbol>(hierarchyInfo.AllCases, SymbolEqualityComparer.Default);
             missingCases.ExceptWith(handledCases);
-            
+
             if (missingCases.Count == 0)
             {
                 return;
             }
-            
+
             // 不足している型のうち、報告すべき型をフィルタリング
             var casesToReport = FilterAncestorsWithUnhandledDescendants(missingCases, hierarchyInfo);
 
