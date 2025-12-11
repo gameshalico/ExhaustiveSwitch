@@ -129,6 +129,6 @@ Unity Package Managerを使用して、ExhaustiveSwitchをプロジェクトに�
 3. 以下のURLを入力して「Install」ボタンをクリック
 
 ```
-https://github.com/gameshalico/ExhaustiveSwitch.git?path=ExhastiveSwitch/Assets/ExhaustiveSwitch
+https://github.com/gameshalico/ExhaustiveSwitch.git?path=ExhaustiveSwitch/Assets/ExhaustiveSwitch
 ```
 
