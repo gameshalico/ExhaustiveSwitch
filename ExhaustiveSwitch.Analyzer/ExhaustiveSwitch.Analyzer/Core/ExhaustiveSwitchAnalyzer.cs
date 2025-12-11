@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -52,17 +51,17 @@ namespace ExhaustiveSwitch.Analyzer
                     return;
                 }
 
-                var lazyInheritanceMap = new Lazy<ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo>>(
+                var lazyHierarchyInfoMap = new Lazy<ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo>>(
                     () => BuildInheritanceMap(compilationContext.Compilation, exhaustiveAttributeType, caseAttributeType), true);
                 
                 // switch文の解析
                 compilationContext.RegisterSyntaxNodeAction(nodeContext =>
-                    AnalyzeSwitchStatement(nodeContext, exhaustiveAttributeType, lazyInheritanceMap.Value),
+                    AnalyzeSwitchStatement(nodeContext, exhaustiveAttributeType, lazyHierarchyInfoMap.Value),
                     SyntaxKind.SwitchStatement);
 
                 // switch式の解析
                 compilationContext.RegisterSyntaxNodeAction(nodeContext =>
-                    AnalyzeSwitchExpression(nodeContext, exhaustiveAttributeType, lazyInheritanceMap.Value),
+                    AnalyzeSwitchExpression(nodeContext, exhaustiveAttributeType, lazyHierarchyInfoMap.Value),
                     SyntaxKind.SwitchExpression);
             });
         }
@@ -132,7 +131,7 @@ namespace ExhaustiveSwitch.Analyzer
                 if (compilation.GetAssemblyOrModuleSymbol(reference) is IAssemblySymbol assembly)
                 {
                     // [Exhaustive]属性が定義されているアセンブリを参照していないアセンブリはスキャンをスキップ
-                    if (!ReferencesAssembly(compilation, assembly, definitionAssembly))
+                    if (!ReferencesAssembly(assembly, definitionAssembly))
                     {
                         continue;
                     }
@@ -430,9 +429,9 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// アセンブリが指定されたアセンブリを参照しているかチェック（transitive参照を含む）
+        /// アセンブリが指定されたアセンブリを直接参照しているかチェック
         /// </summary>
-        private bool ReferencesAssembly(Compilation compilation, IAssemblySymbol assembly, IAssemblySymbol targetAssembly)
+        private bool ReferencesAssembly(IAssemblySymbol assembly, IAssemblySymbol targetAssembly)
         {
             // 自分自身の場合はtrue
             if (SymbolEqualityComparer.Default.Equals(assembly, targetAssembly))
@@ -440,38 +439,15 @@ namespace ExhaustiveSwitch.Analyzer
                 return true;
             }
 
-            // 探索済みのアセンブリを記録（循環参照対策）
-            var visited = new HashSet<IAssemblySymbol>(SymbolEqualityComparer.Default);
-            var queue = new Queue<IAssemblySymbol>();
-            queue.Enqueue(assembly);
-
-            while (queue.Count > 0)
+            // 直接参照のみをチェック
+            var targetName = targetAssembly.Identity.Name;
+            foreach (var module in assembly.Modules)
             {
-                var current = queue.Dequeue();
-                if (!visited.Add(current))
+                foreach (var refAssembly in module.ReferencedAssemblies)
                 {
-                    continue;
-                }
-
-                // 参照しているアセンブリをチェック
-                foreach (var referencedAssemblyIdentity in current.Modules.SelectMany(m => m.ReferencedAssemblies))
-                {
-                    if (referencedAssemblyIdentity.Name == targetAssembly.Identity.Name)
+                    if (refAssembly.Name == targetName)
                     {
                         return true;
-                    }
-
-                    // Compilationから参照先のアセンブリシンボルを取得して再帰的にチェック
-                    foreach (var reference in compilation.References)
-                    {
-                        if (compilation.GetAssemblyOrModuleSymbol(reference) is IAssemblySymbol referencedAssembly)
-                        {
-                            if (referencedAssembly.Identity.Name == referencedAssemblyIdentity.Name)
-                            {
-                                queue.Enqueue(referencedAssembly);
-                                break;
-                            }
-                        }
                     }
                 }
             }
