@@ -33,7 +33,7 @@ namespace ExhaustiveSwitch.Analyzer
             // 最初の文字を小文字に変換
             var result = char.ToLower(name[0]) + name.Substring(1);
             
-            // 予約後の場合は@を付与
+            // 予約語の場合は@を付与
             if (SyntaxFacts.GetKeywordKind(result) != SyntaxKind.None)
             {
                 result = "@" + result;
