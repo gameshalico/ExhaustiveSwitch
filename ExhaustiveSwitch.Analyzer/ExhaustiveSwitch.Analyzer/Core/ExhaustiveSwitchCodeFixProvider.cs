@@ -22,7 +22,7 @@ namespace ExhaustiveSwitch.Analyzer
         
         public sealed override FixAllProvider GetFixAllProvider()
         {
-            // Fix Allは見づらい上に使ってほしくないため、未実装とする
+            // Fix Allは見づらい上、思想上使ってほしくないため、対応しない
             return null;
         }
 
@@ -37,19 +37,15 @@ namespace ExhaustiveSwitch.Analyzer
                 return;
             }
 
-            // switch文またはswitch式を見つける
             var node = root.FindNode(diagnosticSpan);
 
-            // switch文の場合
             var switchStatement = node.AncestorsAndSelf().OfType<SwitchStatementSyntax>().FirstOrDefault();
             if (switchStatement != null)
             {
-                // このswitch文に関連するすべての診断を取得
                 var allDiagnostics = context.Diagnostics
                     .Where(d => d.Id == "EXH0001")
                     .ToList();
 
-                // 複数の診断がある場合、すべてのケースを一括追加するCodeFix
                 if (allDiagnostics.Count > 1)
                 {
                     context.RegisterCodeFix(
@@ -60,7 +56,6 @@ namespace ExhaustiveSwitch.Analyzer
                         allDiagnostics.ToArray());
                 }
 
-                // 各診断に対して個別のCodeFixを登録
                 var individualActions = new List<CodeAction>();
                 foreach (var diag in allDiagnostics)
                 {
@@ -77,16 +72,13 @@ namespace ExhaustiveSwitch.Analyzer
                 return;
             }
 
-            // switch式の場合
             var switchExpression = node.AncestorsAndSelf().OfType<SwitchExpressionSyntax>().FirstOrDefault();
             if (switchExpression != null)
             {
-                // このswitch式に関連するすべての診断を取得
                 var allDiagnostics = context.Diagnostics
                     .Where(d => d.Id == "EXH0001")
                     .ToArray();
 
-                // 複数の診断がある場合、すべてのケースを一括追加するCodeFix
                 if (allDiagnostics.Length > 1)
                 {
                     context.RegisterCodeFix(
@@ -97,7 +89,6 @@ namespace ExhaustiveSwitch.Analyzer
                         allDiagnostics);
                 }
 
-                // 各診断に対して個別のCodeFixを登録
                 var individualActions = new List<CodeAction>();
                 foreach (var diag in allDiagnostics)
                 {
@@ -121,13 +112,12 @@ namespace ExhaustiveSwitch.Analyzer
         {
             var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-            
+
             if (root == null || semanticModel == null)
             {
                 return document;
             }
 
-            // すべての診断から不足している型を取得
             var missingTypes = new List<INamedTypeSymbol>();
             foreach (var diagnostic in diagnostics)
             {
@@ -143,24 +133,20 @@ namespace ExhaustiveSwitch.Analyzer
                 return document;
             }
 
-            // 既存のsectionsの最後（default以外）に追加
             var sections = switchStatement.Sections;
             var defaultSection = sections.FirstOrDefault(s => s.Labels.Any(l => l is DefaultSwitchLabelSyntax));
             var defaultIndex = defaultSection != null ? sections.IndexOf(defaultSection) : sections.Count;
 
-            // 新しいcaseセクションを作成して挿入
             var newSections = sections;
             foreach (var missingType in missingTypes)
             {
                 var newCaseSection = CreateCaseSectionForType(missingType);
                 newSections = newSections.Insert(defaultIndex, newCaseSection);
-                defaultIndex++; // 次のケースは現在挿入した位置の後に挿入
+                defaultIndex++;
             }
 
-            var newSwitchStatement = switchStatement.WithSections(newSections);
-
-            // フォーマットを適用
-            newSwitchStatement = newSwitchStatement.WithAdditionalAnnotations(Formatter.Annotation);
+            var newSwitchStatement = switchStatement.WithSections(newSections)
+                .WithAdditionalAnnotations(Formatter.Annotation);
 
             var newRoot = root.ReplaceNode(switchStatement, newSwitchStatement);
             return document.WithSyntaxRoot(newRoot);
@@ -174,13 +160,12 @@ namespace ExhaustiveSwitch.Analyzer
         {
             var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
             var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-            
+
             if (root == null || semanticModel == null)
             {
                 return document;
             }
 
-            // すべての診断から不足している型を取得
             var missingTypes = new List<INamedTypeSymbol>();
             foreach (var diagnostic in diagnostics)
             {
@@ -196,24 +181,20 @@ namespace ExhaustiveSwitch.Analyzer
                 return document;
             }
 
-            // 既存のarmsの最後（discard以外）に追加
             var arms = switchExpression.Arms;
             var discardArm = arms.FirstOrDefault(a => a.Pattern is DiscardPatternSyntax);
             var discardIndex = discardArm != null ? arms.IndexOf(discardArm) : arms.Count;
 
-            // 新しいswitch armを作成して挿入
             var newArms = arms;
             foreach (var missingType in missingTypes)
             {
                 var newArm = CreateSwitchArmForType(missingType);
                 newArms = newArms.Insert(discardIndex, newArm);
-                discardIndex++; // 次のケースは現在挿入した位置の後に挿入
+                discardIndex++;
             }
 
-            var newSwitchExpression = switchExpression.WithArms(newArms);
-
-            // フォーマットを適用
-            newSwitchExpression = newSwitchExpression.WithAdditionalAnnotations(Formatter.Annotation);
+            var newSwitchExpression = switchExpression.WithArms(newArms)
+                .WithAdditionalAnnotations(Formatter.Annotation);
 
             var newRoot = root.ReplaceNode(switchExpression, newSwitchExpression);
             return document.WithSyntaxRoot(newRoot);

@@ -3,14 +3,8 @@ using Microsoft.CodeAnalysis;
 
 namespace ExhaustiveSwitch.Analyzer
 {
-    /// <summary>
-    /// メタデータ名の取得を行うヘルパーメソッド
-    /// </summary>
     internal static class MetadataHelpers
     {
-        /// <summary>
-        /// 型の完全なメタデータ名を取得
-        /// </summary>
         public static string GetFullMetadataName(INamedTypeSymbol type)
         {
             if (type == null)
@@ -35,9 +29,6 @@ namespace ExhaustiveSwitch.Analyzer
             return string.Join("+", parts);
         }
 
-        /// <summary>
-        /// 名前空間の完全な名前を取得
-        /// </summary>
         public static string GetNamespaceName(INamespaceSymbol namespaceSymbol)
         {
             if (namespaceSymbol == null || namespaceSymbol.IsGlobalNamespace)

@@ -53,13 +53,11 @@ namespace ExhaustiveSwitch.Analyzer
 
                 var lazyHierarchyInfoMap = new Lazy<ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo>>(
                     () => BuildInheritanceMap(compilationContext.Compilation, exhaustiveAttributeType, caseAttributeType), true);
-                
-                // switch文の解析
+
                 compilationContext.RegisterSyntaxNodeAction(nodeContext =>
                     AnalyzeSwitchStatement(nodeContext, exhaustiveAttributeType, lazyHierarchyInfoMap.Value),
                     SyntaxKind.SwitchStatement);
 
-                // switch式の解析
                 compilationContext.RegisterSyntaxNodeAction(nodeContext =>
                     AnalyzeSwitchExpression(nodeContext, exhaustiveAttributeType, lazyHierarchyInfoMap.Value),
                     SyntaxKind.SwitchExpression);
@@ -74,18 +72,14 @@ namespace ExhaustiveSwitch.Analyzer
             INamedTypeSymbol exhaustiveAttributeType,
             INamedTypeSymbol caseAttributeType)
         {
-            // 結果格納用マップ
             // Key: [Exhaustive]な親クラス/インターフェース
             // Value: それを継承/実装している [Case] 属性付きの子クラス一覧
             var map = new Dictionary<INamedTypeSymbol, HashSet<INamedTypeSymbol>>(SymbolEqualityComparer.Default);
-        
-            // ヘルパー: 型をチェックしてマップに追加する
+
             void ProcessType(INamedTypeSymbol typeSymbol)
             {
-                // 1. [Case] 属性がついているかチェック
                 if (TypeAnalysisHelpers.HasAttribute(typeSymbol, caseAttributeType))
                 {
-                    // 2. [Case]がついているなら、その親となる [Exhaustive] 型をすべて探す
                     var exhaustiveBases = TypeAnalysisHelpers.FindAllExhaustiveTypes(typeSymbol, exhaustiveAttributeType);
 
                     foreach (var exhaustiveBase in exhaustiveBases)
@@ -105,8 +99,7 @@ namespace ExhaustiveSwitch.Analyzer
                     ProcessType(nested);
                 }
             }
-        
-            // ヘルパー: 名前空間を再帰的に掘る
+
             void ProcessNamespace(INamespaceSymbol namespaceSymbol)
             {
                 foreach (var typeMember in namespaceSymbol.GetTypeMembers())
@@ -119,11 +112,11 @@ namespace ExhaustiveSwitch.Analyzer
                     ProcessNamespace(nestedNamespace);
                 }
             }
-        
-            // 1. 現在のプロジェクトのソースコード (GlobalNamespace) をスキャン
+
+            // 現在のプロジェクトのソースコードをスキャン
             ProcessNamespace(compilation.GlobalNamespace);
-        
-            // 2. 参照アセンブリをスキャン
+
+            // 参照アセンブリをスキャン
             var definitionAssembly = exhaustiveAttributeType.ContainingAssembly;
 
             foreach (var reference in compilation.References)
@@ -140,7 +133,6 @@ namespace ExhaustiveSwitch.Analyzer
                 }
             }
 
-            // 3. 最終的なマップを構築して返す
             var result = new ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo>(SymbolEqualityComparer.Default);
             foreach (var kvp in map)
             {
@@ -286,9 +278,8 @@ namespace ExhaustiveSwitch.Analyzer
             SemanticModel semanticModel,
             ExhaustiveHierarchyInfo hierarchyInfo)
         {
-            // 1. Switch文で明示的に処理された型
             var explicitlyHandled = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-            
+
             foreach (var pattern in patterns)
             {
                 var typeSymbol = TypeAnalysisHelpers.ExtractTypeFromPattern(pattern, semanticModel);
@@ -297,12 +288,10 @@ namespace ExhaustiveSwitch.Analyzer
                     explicitlyHandled.Add(typeSymbol);
                 }
             }
-        
-            // 2. グラフ探索でカバレッジを判定
+
             var finalHandledCases = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-        
-            // メモ化用辞書
-            // true: カバー済み, false: 未カバー
+
+            // メモ化用辞書 (true: カバー済み, false: 未カバー)
             var memo = new Dictionary<INamedTypeSymbol, bool>(SymbolEqualityComparer.Default);
         
             foreach (var candidate in hierarchyInfo.AllCases)
@@ -329,32 +318,26 @@ namespace ExhaustiveSwitch.Analyzer
             {
                 return cachedResult;
             }
-        
-            // 循環参照防止のため、一旦falseを入れておく（DAGなら本来循環しないが念のため）
+
+            // 循環参照防止のため一旦falseを設定（DAGなら循環しないが念のため）
             memo[type] = false;
-        
-            // 条件1: 自身が明示的に書かれている
+
             if (explicitlyHandled.Contains(type))
             {
                 memo[type] = true;
                 return true;
             }
-        
-            // 条件2: 親（先祖）のいずれかが明示的に書かれている
-            // 親が複数いる場合、どれか1つでもカバーされていれば、自分もカバーされたとみなす
+
+            // 親のいずれかが明示的に処理されている場合、自身もカバー済みとみなす
             if (IsAnyAncestorExplicitlyHandled(type, explicitlyHandled, hierarchyInfo))
             {
                 memo[type] = true;
                 return true;
             }
-        
-            // 条件3: すべての「直接の子」がカバーされている
-            // ただし、型がabstractまたはsealedでない場合、その型自体もインスタンス化可能なため、
-            // 子クラスのカバレッジだけでは不十分（明示的な処理が必要）
+
+            // abstract/sealed/interfaceのみ子クラスのカバレッジで親をカバー可能
             if (hierarchyInfo.DirectChildrenMap.TryGetValue(type, out var children) && children.Count > 0)
             {
-                // abstractまたはsealedの場合のみ、子クラスのカバレッジで親をカバー可能
-                // interfaceの場合も子クラスのカバレッジで十分
                 bool canBeCoveredByChildren = type.IsAbstract || type.IsSealed || type.TypeKind == TypeKind.Interface;
 
                 if (canBeCoveredByChildren)
@@ -376,8 +359,7 @@ namespace ExhaustiveSwitch.Analyzer
                     }
                 }
             }
-        
-            // 条件1,2,3どれも満たさない -> 未カバー
+
             return false;
         }
         
@@ -389,11 +371,9 @@ namespace ExhaustiveSwitch.Analyzer
             HashSet<INamedTypeSymbol> explicitlyHandled,
             ExhaustiveHierarchyInfo hierarchyInfo)
         {
-            // 幅優先探索で親を遡る
             var queue = new Queue<INamedTypeSymbol>();
             var visited = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-            
-            // 初期親を追加
+
             if (hierarchyInfo.DirectParentsMap.TryGetValue(type, out var parents))
             {
                 foreach (var p in parents)
@@ -414,8 +394,7 @@ namespace ExhaustiveSwitch.Analyzer
                 {
                     return true;
                 }
-        
-                // さらに上の親へ
+
                 if (hierarchyInfo.DirectParentsMap.TryGetValue(current, out var grandParents))
                 {
                     foreach (var gp in grandParents)
@@ -424,16 +403,12 @@ namespace ExhaustiveSwitch.Analyzer
                     }
                 }
             }
-        
+
             return false;
         }
 
-        /// <summary>
-        /// アセンブリが指定されたアセンブリを直接参照しているかチェック
-        /// </summary>
         private bool ReferencesAssembly(IAssemblySymbol assembly, IAssemblySymbol targetAssembly)
         {
-            // 自分自身の場合はtrue
             if (SymbolEqualityComparer.Default.Equals(assembly, targetAssembly))
             {
                 return true;
