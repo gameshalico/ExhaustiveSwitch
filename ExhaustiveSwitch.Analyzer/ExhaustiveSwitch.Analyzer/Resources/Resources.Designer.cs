@@ -113,5 +113,32 @@ namespace ExhaustiveSwitch.Analyzer {
                 return ResourceManager.GetString("CodeFixAddIndividualCases", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Case without Exhaustive base.
+        /// </summary>
+        internal static string OrphanCaseTitle {
+            get {
+                return ResourceManager.GetString("OrphanCaseTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Type '{0}' has [Case] attribute but does not implement or inherit any [Exhaustive] type..
+        /// </summary>
+        internal static string OrphanCaseMessageFormat {
+            get {
+                return ResourceManager.GetString("OrphanCaseMessageFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Types with [Case] attribute should implement or inherit at least one type with [Exhaustive] attribute..
+        /// </summary>
+        internal static string OrphanCaseDescription {
+            get {
+                return ResourceManager.GetString("OrphanCaseDescription", resourceCulture);
+            }
+        }
     }
 }

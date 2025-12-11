@@ -141,4 +141,16 @@
     <value>個別のケースを追加...</value>
     <comment>個別のケースを追加するサブメニューのタイトル</comment>
   </data>
+  <data name="OrphanCaseTitle" xml:space="preserve">
+    <value>Exhaustive 基底型のない Case</value>
+    <comment>孤立したCase属性の警告診断のタイトル</comment>
+  </data>
+  <data name="OrphanCaseMessageFormat" xml:space="preserve">
+    <value>型 '{0}' は [Case] 属性を持ちますが、[Exhaustive] 属性を持つ型を実装または継承していません。</value>
+    <comment>孤立したCase属性の警告メッセージ形式。{0}はCase属性を持つ型名。</comment>
+  </data>
+  <data name="OrphanCaseDescription" xml:space="preserve">
+    <value>[Case] 属性を持つ型は、少なくとも1つの [Exhaustive] 属性を持つ型を実装または継承する必要があります。</value>
+    <comment>孤立したCase属性の警告診断の説明</comment>
+  </data>
 </root>

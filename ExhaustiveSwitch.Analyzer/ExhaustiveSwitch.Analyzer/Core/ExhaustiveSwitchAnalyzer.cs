@@ -14,6 +14,7 @@ namespace ExhaustiveSwitch.Analyzer
     public class ExhaustiveSwitchAnalyzer : DiagnosticAnalyzer
     {
         private const string DiagnosticId = "EXH0001";
+        private const string OrphanCaseDiagnosticId = "EXH0002";
 
         private static readonly LocalizableString Title = new LocalizableResourceString(
             nameof(Resources.AnalyzerTitle), Resources.ResourceManager, typeof(Resources));
@@ -32,7 +33,23 @@ namespace ExhaustiveSwitch.Analyzer
             isEnabledByDefault: true,
             description: Description);
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+        private static readonly LocalizableString OrphanCaseTitle = new LocalizableResourceString(
+            nameof(Resources.OrphanCaseTitle), Resources.ResourceManager, typeof(Resources));
+        private static readonly LocalizableString OrphanCaseMessageFormat = new LocalizableResourceString(
+            nameof(Resources.OrphanCaseMessageFormat), Resources.ResourceManager, typeof(Resources));
+        private static readonly LocalizableString OrphanCaseDescription = new LocalizableResourceString(
+            nameof(Resources.OrphanCaseDescription), Resources.ResourceManager, typeof(Resources));
+
+        private static readonly DiagnosticDescriptor OrphanCaseRule = new DiagnosticDescriptor(
+            OrphanCaseDiagnosticId,
+            OrphanCaseTitle,
+            OrphanCaseMessageFormat,
+            Category,
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: OrphanCaseDescription);
+
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule, OrphanCaseRule);
 
         public override void Initialize(AnalysisContext context)
         {
@@ -61,6 +78,10 @@ namespace ExhaustiveSwitch.Analyzer
                 compilationContext.RegisterSyntaxNodeAction(nodeContext =>
                     AnalyzeSwitchExpression(nodeContext, exhaustiveAttributeType, lazyHierarchyInfoMap.Value),
                     SyntaxKind.SwitchExpression);
+
+                compilationContext.RegisterSymbolAction(symbolContext =>
+                    AnalyzeTypeSymbol(symbolContext, exhaustiveAttributeType, caseAttributeType),
+                    SymbolKind.NamedType);
             });
         }
         
@@ -445,6 +466,35 @@ namespace ExhaustiveSwitch.Analyzer
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// 型シンボルが[Case]属性を持つが[Exhaustive]型を継承/実装していない場合に警告を出す
+        /// </summary>
+        private void AnalyzeTypeSymbol(
+            SymbolAnalysisContext context,
+            INamedTypeSymbol exhaustiveAttributeType,
+            INamedTypeSymbol caseAttributeType)
+        {
+            var typeSymbol = (INamedTypeSymbol)context.Symbol;
+
+            // [Case]属性を持つかチェック
+            if (!TypeAnalysisHelpers.HasAttribute(typeSymbol, caseAttributeType))
+            {
+                return;
+            }
+
+            // 上位に[Exhaustive]型があるかチェック
+            var exhaustiveBases = TypeAnalysisHelpers.FindAllExhaustiveTypes(typeSymbol, exhaustiveAttributeType);
+            if (exhaustiveBases.Count == 0)
+            {
+                // [Case]属性があるが、[Exhaustive]型が見つからない場合は警告
+                var diagnostic = Diagnostic.Create(
+                    OrphanCaseRule,
+                    typeSymbol.Locations.FirstOrDefault(),
+                    typeSymbol.ToDisplayString());
+                context.ReportDiagnostic(diagnostic);
+            }
         }
     }
 }

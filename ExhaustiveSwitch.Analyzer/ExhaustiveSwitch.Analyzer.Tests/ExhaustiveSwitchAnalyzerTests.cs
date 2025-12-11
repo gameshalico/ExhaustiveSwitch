@@ -757,10 +757,10 @@ public class Program
         }
 
         /// <summary>
-        /// Exhaustive属性のないインターフェースはチェックされない
+        /// Exhaustive属性のないインターフェースはswitchのチェックはされないが、[Case]型には警告が出る
         /// </summary>
         [Fact]
-        public async Task WhenNoExhaustiveAttribute_NoDiagnostic()
+        public async Task WhenNoExhaustiveAttribute_CaseWarningOnly()
         {
             var test = @"
 using ExhaustiveSwitch;
@@ -768,10 +768,10 @@ using ExhaustiveSwitch;
 public interface IEnemy { }
 
 [Case]
-public sealed class Goblin : IEnemy { }
+public sealed class {|#0:Goblin|} : IEnemy { }
 
 [Case]
-public sealed class Orc : IEnemy { }
+public sealed class {|#1:Orc|} : IEnemy { }
 
 public class Program
 {
@@ -785,7 +785,16 @@ public class Program
     }
 }";
 
-            await VerifyAnalyzerAsync(test);
+            // switchのEXH0001は出ないが、[Case]型に対するEXH0002は出る
+            var expected1 = new DiagnosticResult("EXH0002", DiagnosticSeverity.Warning)
+                .WithLocation(0)
+                .WithArguments("Goblin");
+
+            var expected2 = new DiagnosticResult("EXH0002", DiagnosticSeverity.Warning)
+                .WithLocation(1)
+                .WithArguments("Orc");
+
+            await VerifyAnalyzerAsync(test, expected1, expected2);
         }
 
         /// <summary>
@@ -1212,6 +1221,68 @@ public class Program
             var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
                 .WithLocation(0)
                 .WithArguments("IEnemy", "Goblin");
+
+            await VerifyAnalyzerAsync(test, expected);
+        }
+
+        /// <summary>
+        /// [Case]属性があるが[Exhaustive]型を継承/実装していない場合、警告
+        /// </summary>
+        [Fact]
+        public async Task WhenCaseWithoutExhaustiveBase_Warning()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Case]
+public sealed class {|#0:OrphanClass|} { }";
+
+            var expected = new DiagnosticResult("EXH0002", DiagnosticSeverity.Warning)
+                .WithLocation(0)
+                .WithArguments("OrphanClass");
+
+            await VerifyAnalyzerAsync(test, expected);
+        }
+
+        /// <summary>
+        /// [Case]属性があり[Exhaustive]型を継承している場合、警告なし
+        /// </summary>
+        [Fact]
+        public async Task WhenCaseWithExhaustiveBase_NoWarning()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface IEnemy { }
+
+[Case]
+public sealed class Goblin : IEnemy { }";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
+        /// <summary>
+        /// 複数の[Case]型があり、一部のみ[Exhaustive]型を継承していない場合、該当する型のみ警告
+        /// </summary>
+        [Fact]
+        public async Task WhenMultipleCasesWithMixedExhaustiveBases_WarningForOrphanOnly()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface IEnemy { }
+
+[Case]
+public sealed class Goblin : IEnemy { }
+
+[Case]
+public sealed class {|#0:OrphanClass|} { }";
+
+            var expected = new DiagnosticResult("EXH0002", DiagnosticSeverity.Warning)
+                .WithLocation(0)
+                .WithArguments("OrphanClass");
 
             await VerifyAnalyzerAsync(test, expected);
         }

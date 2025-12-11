@@ -141,4 +141,16 @@
     <value>Add individual cases...</value>
     <comment>Code fix title for adding individual cases submenu</comment>
   </data>
+  <data name="OrphanCaseTitle" xml:space="preserve">
+    <value>Case without Exhaustive base</value>
+    <comment>The title of the orphan case warning diagnostic</comment>
+  </data>
+  <data name="OrphanCaseMessageFormat" xml:space="preserve">
+    <value>Type '{0}' has [Case] attribute but does not implement or inherit any [Exhaustive] type.</value>
+    <comment>The message format for the orphan case warning. {0} is the type name with [Case] attribute.</comment>
+  </data>
+  <data name="OrphanCaseDescription" xml:space="preserve">
+    <value>Types with [Case] attribute should implement or inherit at least one type with [Exhaustive] attribute.</value>
+    <comment>The description of the orphan case warning diagnostic</comment>
+  </data>
 </root>

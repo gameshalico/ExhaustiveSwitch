@@ -32,7 +32,6 @@ public class Goblin : IEnemy
     public void Attack() { }
 }
 
-[Exhaustive]
 public interface IFlyable
 {
     public void Fly() { }
@@ -87,12 +86,18 @@ public void ProcessEnemy(IEnemy enemy)
 
 ### エラーメッセージ
 
-すべての`[Case]`型が明示的に処理されていない場合、以下のエラーが発行されます：
+すべての`[Case]`型が明示的に処理されていない場合、以下のようなエラーが発行されます：
 尚、上位の型で処理されている場合は、エラーは発行されません。
 
 ```
 エラー EXH0001: Exhaustive 型 'IEnemy' の 'Dragon' ケースが switch で処理されていません。
 ```
+
+`[Case]`属性が付与された型が`[Exhaustive]`属性を継承/実装していない場合、以下のような警告が発行されます：
+
+```
+警告 EXH0002: Case 属性が付与された型 'Goblin' は Exhaustive 型 'IEnemy' を継承/実装していません。
+``` 
 
 ### 制限
 
