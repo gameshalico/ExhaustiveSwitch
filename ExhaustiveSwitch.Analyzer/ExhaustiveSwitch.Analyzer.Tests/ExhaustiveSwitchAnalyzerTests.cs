@@ -1069,6 +1069,154 @@ public class Program
         }
 
         /// <summary>
+        /// 上位インターフェースでまとめて処理する場合、エラーなし
+        /// IFlyableインターフェースを実装しているDragonとHarpyをまとめて処理
+        /// </summary>
+        [Fact]
+        public async Task WhenHandledBySuperInterface_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface IEnemy
+{
+    void Attack();
+}
+
+public interface IFlyable
+{
+    void Fly();
+}
+
+[Case]
+public class Goblin : IEnemy
+{
+    public void Attack() { }
+}
+
+[Case]
+public class Dragon : IEnemy, IFlyable
+{
+    public void Attack() { }
+    public void Fly() { }
+}
+
+[Case]
+public class Harpy : IEnemy, IFlyable
+{
+    public void Attack() { }
+    public void Fly() { }
+}
+
+public class Program
+{
+    public void ProcessEnemy(IEnemy enemy)
+    {
+        switch (enemy)
+        {
+            case Goblin goblin:
+                break;
+            case IFlyable flyable:
+                // DragonとHarpyをまとめて処理
+                break;
+        }
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
+        /// <summary>
+        /// 上位インターフェースと具象型の混在パターン、エラーなし
+        /// </summary>
+        [Fact]
+        public async Task WhenMixedSuperInterfaceAndConcrete_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface IEnemy { }
+
+public interface IFlyable { }
+
+[Case]
+public class Goblin : IEnemy { }
+
+[Case]
+public class Dragon : IEnemy, IFlyable { }
+
+[Case]
+public class Harpy : IEnemy, IFlyable { }
+
+[Case]
+public class Skeleton : IEnemy { }
+
+public class Program
+{
+    public void ProcessEnemy(IEnemy enemy)
+    {
+        switch (enemy)
+        {
+            case IFlyable flyable:
+                // DragonとHarpyをまとめて処理
+                break;
+            case Goblin goblin:
+                break;
+            case Skeleton skeleton:
+                break;
+        }
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
+        /// <summary>
+        /// 上位インターフェースでの処理があっても、それでカバーされないケースが不足している場合、エラー
+        /// </summary>
+        [Fact]
+        public async Task WhenSuperInterfaceDoesNotCoverAll_Diagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface IEnemy { }
+
+public interface IFlyable { }
+
+[Case]
+public class Goblin : IEnemy { }
+
+[Case]
+public class Dragon : IEnemy, IFlyable { }
+
+[Case]
+public class Harpy : IEnemy, IFlyable { }
+
+public class Program
+{
+    public void ProcessEnemy(IEnemy enemy)
+    {
+        {|#0:switch (enemy)
+        {
+            case IFlyable flyable:
+                // DragonとHarpyのみ処理
+                break;
+        }|}
+    }
+}";
+
+            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("IEnemy", "Goblin");
+
+            await VerifyAnalyzerAsync(test, expected);
+        }
+
+        /// <summary>
         /// コードをコンパイルしてMetadataReferenceを作成
         /// </summary>
         private static async Task<MetadataReference> CompileToMetadataReferenceAsync(string assemblyName, string code, params MetadataReference[] additionalReferences)

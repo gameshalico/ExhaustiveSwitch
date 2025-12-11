@@ -283,9 +283,26 @@ namespace ExhaustiveSwitch.Analyzer
             foreach (var pattern in patterns)
             {
                 var typeSymbol = TypeAnalysisHelpers.ExtractTypeFromPattern(pattern, semanticModel);
-                if (typeSymbol != null && hierarchyInfo.AllCases.Contains(typeSymbol))
+                if (typeSymbol == null)
+                {
+                    continue;
+                }
+
+                // パターンの型が[Case]型である場合、直接追加
+                if (hierarchyInfo.AllCases.Contains(typeSymbol))
                 {
                     explicitlyHandled.Add(typeSymbol);
+                }
+                else
+                {
+                    // パターンの型が[Case]型でない場合、その型を実装/継承している[Case]型をすべて追加
+                    foreach (var caseType in hierarchyInfo.AllCases)
+                    {
+                        if (TypeAnalysisHelpers.IsImplementingOrDerivedFrom(caseType, typeSymbol))
+                        {
+                            explicitlyHandled.Add(caseType);
+                        }
+                    }
                 }
             }
 
@@ -293,7 +310,7 @@ namespace ExhaustiveSwitch.Analyzer
 
             // メモ化用辞書 (true: カバー済み, false: 未カバー)
             var memo = new Dictionary<INamedTypeSymbol, bool>(SymbolEqualityComparer.Default);
-        
+
             foreach (var candidate in hierarchyInfo.AllCases)
             {
                 if (CheckCoverageRecursive(candidate, explicitlyHandled, hierarchyInfo, memo))
@@ -301,7 +318,7 @@ namespace ExhaustiveSwitch.Analyzer
                     finalHandledCases.Add(candidate);
                 }
             }
-        
+
             return finalHandledCases;
         }
         

@@ -18,7 +18,7 @@ switch文/式で扱うべき型が処理されていないことをエラーと�
 ```csharp
 using ExhaustiveSwitch;
 
-// インターフェースまたは抽象クラスに[Exhaustive]属性を付与
+// [Exhaustive]属性を付与
 [Exhaustive]
 public interface IEnemy
 {
@@ -32,15 +32,29 @@ public class Goblin : IEnemy
     public void Attack() { }
 }
 
-[Case]
-public class Dragon : IEnemy
+[Exhaustive]
+public interface IFlyable
 {
-    public void Attack() { }
+    public void Fly() { }
 }
 
-// switch文で明示的にすべての具象型を処理する必要がある
+[Case]
+public class Dragon : IEnemy, IFlyable
+{
+    public void Attack() { }
+    public void Fly() { }
+}
+
+[Case]
+public class Harpy : IEnemy, IFlyable
+{
+    public void Attack() { }
+    public void Fly() { }
+}
+
 public void ProcessEnemy(IEnemy enemy)
 {
+    // switch文で明示的にすべての具象型を処理する必要がある
     switch (enemy)
     {
         case Goblin goblin:
@@ -48,6 +62,22 @@ public void ProcessEnemy(IEnemy enemy)
             break;
         case Dragon dragon:
             // Dragonの処理
+            break;
+        case Harpy harpy:
+            // Harpyの処理
+            break;
+        default:
+            throw new ArgumentOutOfRangeException(nameof(enemy), enemy, null);
+    }
+
+    // 上位の型で処理することも可能
+    switch (enemy)
+    {
+        case Goblin goblin:
+            // Goblinの処理
+            break;
+        case IFlyable flyable:
+            // IFlyableの処理
             break;
         default:
             throw new ArgumentOutOfRangeException(nameof(enemy), enemy, null);
@@ -58,6 +88,7 @@ public void ProcessEnemy(IEnemy enemy)
 ### エラーメッセージ
 
 すべての`[Case]`型が明示的に処理されていない場合、以下のエラーが発行されます：
+尚、上位の型で処理されている場合は、エラーは発行されません。
 
 ```
 エラー EXH0001: Exhaustive 型 'IEnemy' の 'Dragon' ケースが switch で処理されていません。
