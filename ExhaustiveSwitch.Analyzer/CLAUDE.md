@@ -69,10 +69,10 @@ Analyzerは以下のステップで検証を行う必要があります：
 3. **エラー判定**: $S_{expected} \setminus S_{actual} \neq \emptyset$ の場合、診断ID **EXH0001** (Error) を発行
 
 #### 3. 重要な制約
-- **上位型マッチングは網羅に含まれない**: `case IEnemy e:` のような上位型でのマッチングは、明示的な具象型処理として扱わない
+- **上位型マッチングの処理**: `case IFlyable f:` のような共通インターフェースでマッチする場合、そのインターフェースを実装するすべての[Case]型がカバーされる
 - **default/_は網羅を補完しない**: これらのパターンが存在しても、明示的な具象型処理が不足していればエラーを出力
 - **クロスアセンブリ対応**: 参照アセンブリ内の`[Case]`型も検出する必要がある
-- **ジェネリクス対応**: `IEnemy<T>`のようなジェネリック型でも、型パラメータを考慮して正確に検証
+- **ジェネリクス対応**: `IResult<T>`のようなジェネリック型では、型引数を適用した構築型（例: `Success<int>`, `Failure<int>`）で検証
 
 ## 診断メッセージ
 
@@ -91,10 +91,11 @@ ExhaustiveSwitch.Analyzer/
 ├─ ExhaustiveSwitch.Analyzer/
 │   ├─ Core/                          # Analyzer本体
 │   │   ├─ ExhaustiveSwitchAnalyzer.cs
-│   │   └─ ExhaustiveSwitchCodeFixProvider.cs
+│   │   ├─ ExhaustiveSwitchCodeFixProvider.cs
+│   │   └─ ExhaustiveHierarchyInfo.cs # 継承階層情報の管理
 │   │
 │   ├─ Helpers/                       # ヘルパークラス群
-│   │   ├─ TypeAnalysisHelpers.cs    # 型分析関連のヘルパー
+│   │   ├─ TypeAnalysisHelpers.cs    # 型分析関連のヘルパー（ジェネリック対応含む）
 │   │   ├─ MetadataHelpers.cs        # メタデータ探索のヘルパー
 │   │   ├─ DiagnosticHelpers.cs      # 診断作成のヘルパー
 │   │   └─ CodeGenerationHelpers.cs  # コード生成のヘルパー
@@ -104,7 +105,20 @@ ExhaustiveSwitch.Analyzer/
 │       └─ Resources.Designer.cs      # リソースアクセス用コード
 │
 └─ ExhaustiveSwitch.Analyzer.Tests/
-    └─ ExhaustiveSwitchAnalyzerTests.cs  # ユニット・統合テスト
+    ├─ Core/                          # コア機能のテスト
+    │   ├─ ExhaustiveSwitchAnalyzerBasicTests.cs       # 基本機能テスト
+    │   ├─ ExhaustiveSwitchAnalyzerHierarchyTests.cs   # 階層構造テスト
+    │   ├─ ExhaustiveSwitchAnalyzerPatternTests.cs     # パターンマッチングテスト
+    │   ├─ ExhaustiveSwitchAnalyzerCrossAssemblyTests.cs # クロスアセンブリテスト
+    │   ├─ ExhaustiveSwitchAnalyzerGenericsTests.cs    # ジェネリック型テスト
+    │   ├─ ExhaustiveHierarchyInfoTests.cs
+    │   └─ ExhaustiveSwitchCodeFixTests.cs
+    │
+    └─ Helpers/                       # ヘルパークラスのテスト
+        ├─ TypeAnalysisHelpersTests.cs
+        ├─ MetadataHelpersTests.cs
+        ├─ DiagnosticHelpersTests.cs
+        └─ CodeGenerationHelpersTests.cs
 ```
 
 ### 主要ファイルの説明
@@ -115,13 +129,21 @@ ExhaustiveSwitch.Analyzer/
 
 #### ExhaustiveSwitch.Analyzer/Core/
 - **ExhaustiveSwitchAnalyzer.cs**: メインのAnalyzer実装
-  - `CompilationStartAction`で全[Case]型をキャッシュ
-  - switch文/式ごとに網羅性を検証
+  - `CompilationStartAction`で全[Case]型をキャッシュ（`BuildInheritanceMap`）
+  - ジェネリック型の場合は型定義（`OriginalDefinition`）をキーとして使用
+  - switch文/式ごとに網羅性を検証（`AnalyzeSwitchConstruct`）
 - **ExhaustiveSwitchCodeFixProvider.cs**: コードフィックスの実装
   - 不足しているcaseを自動追加する機能
+- **ExhaustiveHierarchyInfo.cs**: 継承階層の情報を管理
+  - `AllCases`: すべての[Case]型のセット
+  - `DirectChildrenMap`, `DirectParentsMap`: 親子関係のマップ
+  - `ApplyTypeArguments`: ジェネリック型に型引数を適用して構築型を生成
 
 #### ExhaustiveSwitch.Analyzer/Helpers/
 - **TypeAnalysisHelpers.cs**: 型の継承関係や網羅性の分析
+  - `IsImplementingOrDerivedFrom`: ジェネリック型の型引数も考慮した継承判定
+  - `IsGenericTypeMatch`: ジェネリック型の一致判定（型定義と型引数の両方をチェック）
+  - `ExtractTypeFromPattern`: switch文/式のパターンから型情報を抽出
 - **MetadataHelpers.cs**: 参照アセンブリからの属性付き型の検索
 - **DiagnosticHelpers.cs**: 診断情報の作成
 - **CodeGenerationHelpers.cs**: CodeFixでのコード生成ロジック
@@ -134,21 +156,80 @@ ExhaustiveSwitch.Analyzer/
 - xUnitとRoslyn Analyzer Testing frameworkを使用
 - `Microsoft.CodeAnalysis.CSharp.Analyzer.Testing`による統合テスト
 - Analyzerとコードフィックスの両方をテスト
+- テストは機能ごとにファイルを分割:
+  - **BasicTests**: 基本的なswitch文/式の網羅性チェック
+  - **HierarchyTests**: 多重継承、ネストしたExhaustive、上位インターフェースでの処理
+  - **PatternTests**: whenガード、プロパティパターン、RecursivePattern
+  - **CrossAssemblyTests**: 参照アセンブリの型検出、Transitive参照
+  - **GenericsTests**: ジェネリック型の網羅性チェック（`IResult<int>`など）
 
 ## 実装の重要ポイント
 
 ### キャッシング戦略
 Analyzerは`CompilationStartAction`で以下のキャッシュを構築します：
 ```csharp
-ConcurrentDictionary<INamedTypeSymbol, ConcurrentBag<INamedTypeSymbol>> CaseCache
+ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo> hierarchyInfoMap
 ```
-- キー: [Exhaustive]型（例: IEnemy）
-- 値: その型を継承/実装する[Case]型のコレクション
+- **キー**: [Exhaustive]型の型定義（ジェネリックの場合は`OriginalDefinition`）
+  - 例: `IResult<T>` → キーは `IResult<T>`（型定義）
+- **値**: `ExhaustiveHierarchyInfo`
+  - `AllCases`: その型を継承/実装する[Case]型のセット（型定義）
+  - `DirectChildrenMap`, `DirectParentsMap`: 親子関係のマップ
 - これによりswitch解析時に都度スキャンする必要がなくなる
 
-### 型の比較
-- `SymbolEqualityComparer.Default`を使用してジェネリクス型パラメータを含めた厳密な型比較を実施
-- `OriginalDefinition`を使用して構築されたジェネリック型（例: `List<int>`）を未構築型（例: `List<T>`）に変換して比較
+### ジェネリック型の処理
+1. **型定義でのキャッシング**: `Success<T>`, `Failure<T>` は型定義として`hierarchyInfoMap`に格納
+2. **実行時の型引数適用**: switch文で `IResult<int>` を処理する際、`ApplyTypeArguments`で型引数を適用
+   - `Success<T>` → `Success<int>`
+   - `Failure<T>` → `Failure<int>`
+3. **型比較**: `IsGenericTypeMatch`で型定義と型引数の両方を厳密に比較
+   - `Success<int>` と `Success<string>` は異なる型として扱う
+   - `SymbolEqualityComparer.Default`を使用
+
+## ジェネリック型のサポート
+
+### 対応している機能
+- **ジェネリックインターフェース/抽象クラス**: `[Exhaustive] interface IResult<T>`
+- **ジェネリック[Case]型**: `[Case] class Success<T> : IResult<T>`
+- **複数の型パラメータ**: `IEither<TLeft, TRight>`
+- **構築型での網羅性チェック**: `IResult<int>` のswitchで `Success<int>` と `Failure<int>` を検証
+
+### 実装例
+```csharp
+[Exhaustive]
+public interface IResult<T> { }
+
+[Case]
+public sealed class Success<T> : IResult<T>
+{
+    public T Value { get; }
+}
+
+[Case]
+public sealed class Failure<T> : IResult<T>
+{
+    public string Error { get; }
+}
+
+// switch文での使用
+public void Process(IResult<int> result)
+{
+    switch (result)
+    {
+        case Success<int> s:  // 型引数を明示
+            Console.WriteLine(s.Value);
+            break;
+        case Failure<int> f:  // 型引数を明示
+            Console.WriteLine(f.Error);
+            break;
+    }
+}
+```
+
+### 注意点
+- switch文/式では**型引数を明示**する必要があります（`Success<int>`, `Failure<int>`）
+- 型引数が異なれば別の型として扱われます（`Success<int>` ≠ `Success<string>`）
+- 非ジェネリック型とジェネリック型の混在も可能
 
 ## Unity側への配置
 
