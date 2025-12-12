@@ -31,7 +31,7 @@ namespace ExhaustiveSwitch.Analyzer
             var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
             var diagnostic = context.Diagnostics.First();
             var diagnosticSpan = diagnostic.Location.SourceSpan;
-            
+
             if (root == null)
             {
                 return;
@@ -46,18 +46,26 @@ namespace ExhaustiveSwitch.Analyzer
                     .Where(d => d.Id == "EXH0001")
                     .ToList();
 
-                if (allDiagnostics.Count > 1)
-                {
-                    context.RegisterCodeFix(
-                        CodeAction.Create(
-                            title: Resources.CodeFixAddAllCases,
-                            createChangedDocument: c => AddMissingCasesToSwitchStatementAsync(context.Document, switchStatement, allDiagnostics, c),
-                            equivalenceKey: "AddAllCases"),
-                        allDiagnostics.ToArray());
-                }
-
                 foreach (var diag in allDiagnostics)
                 {
+                    // 最初の診断の場合のみ、"すべて追加"のCodeFixを登録
+                    if (diag.Properties.TryGetValue("IsFirstDiagnostic", out var isFirst) && isFirst == "true")
+                    {
+                        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
+                        var allMissingTypes = DiagnosticHelpers.GetAllMissingTypesFromDiagnostic(diag, semanticModel.Compilation);
+
+                        if (allMissingTypes.Count > 1)
+                        {
+                            context.RegisterCodeFix(
+                                CodeAction.Create(
+                                    title: Resources.CodeFixAddAllCases,
+                                    createChangedDocument: c => AddMissingCasesToSwitchStatementAsync(context.Document, switchStatement, allMissingTypes, c),
+                                    equivalenceKey: "AddAllCases"),
+                                diag);
+                        }
+                    }
+
+                    // 各診断に対して個別のCodeFixを登録
                     var typeName = DiagnosticHelpers.GetMissingTypeNameFromDiagnostic(diag);
                     context.RegisterCodeFix(
                         CodeAction.Create(
@@ -76,18 +84,26 @@ namespace ExhaustiveSwitch.Analyzer
                     .Where(d => d.Id == "EXH0001")
                     .ToArray();
 
-                if (allDiagnostics.Length > 1)
-                {
-                    context.RegisterCodeFix(
-                        CodeAction.Create(
-                            title: Resources.CodeFixAddAllCases,
-                            createChangedDocument: c => AddMissingCasesToSwitchExpressionAsync(context.Document, switchExpression, allDiagnostics, c),
-                            equivalenceKey: "AddAllCases"),
-                        allDiagnostics);
-                }
-
                 foreach (var diag in allDiagnostics)
                 {
+                    // 最初の診断の場合のみ、"すべて追加"のCodeFixを登録
+                    if (diag.Properties.TryGetValue("IsFirstDiagnostic", out var isFirst) && isFirst == "true")
+                    {
+                        var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
+                        var allMissingTypes = DiagnosticHelpers.GetAllMissingTypesFromDiagnostic(diag, semanticModel.Compilation);
+
+                        if (allMissingTypes.Count > 1)
+                        {
+                            context.RegisterCodeFix(
+                                CodeAction.Create(
+                                    title: Resources.CodeFixAddAllCases,
+                                    createChangedDocument: c => AddMissingCasesToSwitchExpressionAsync(context.Document, switchExpression, allMissingTypes, c),
+                                    equivalenceKey: "AddAllCases"),
+                                diag);
+                        }
+                    }
+
+                    // 各診断に対して個別のCodeFixを登録
                     var typeName = DiagnosticHelpers.GetMissingTypeNameFromDiagnostic(diag);
                     context.RegisterCodeFix(CodeAction.Create(
                         title: string.Format(Resources.CodeFixAddSingleCase, typeName),
@@ -158,6 +174,42 @@ namespace ExhaustiveSwitch.Analyzer
             return document.WithSyntaxRoot(newRoot);
         }
 
+        private async Task<Document> AddMissingCasesToSwitchStatementAsync(
+            Document document,
+            SwitchStatementSyntax switchStatement,
+            IEnumerable<INamedTypeSymbol> missingTypes,
+            CancellationToken cancellationToken)
+        {
+            var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+            if (root == null)
+            {
+                return document;
+            }
+
+            if (!missingTypes.Any())
+            {
+                return document;
+            }
+
+            var sections = switchStatement.Sections;
+            var defaultSection = sections.FirstOrDefault(s => s.Labels.Any(l => l is DefaultSwitchLabelSyntax));
+            var defaultIndex = defaultSection != null ? sections.IndexOf(defaultSection) : sections.Count;
+
+            var newSections = sections;
+            foreach (var missingType in missingTypes)
+            {
+                var newCaseSection = CreateCaseSectionForType(missingType);
+                newSections = newSections.Insert(defaultIndex, newCaseSection);
+                defaultIndex++;
+            }
+
+            var newSwitchStatement = switchStatement.WithSections(newSections)
+                .WithAdditionalAnnotations(Formatter.Annotation);
+
+            var newRoot = root.ReplaceNode(switchStatement, newSwitchStatement);
+            return document.WithSyntaxRoot(newRoot);
+        }
+
         private async Task<Document> AddMissingCasesToSwitchExpressionAsync(
             Document document,
             SwitchExpressionSyntax switchExpression,
@@ -172,6 +224,42 @@ namespace ExhaustiveSwitch.Analyzer
 
             var missingTypes = await GetMissingTypesFromDiagnosticsAsync(document, diagnostics, cancellationToken).ConfigureAwait(false);
             if (missingTypes.Count == 0)
+            {
+                return document;
+            }
+
+            var arms = switchExpression.Arms;
+            var discardArm = arms.FirstOrDefault(a => a.Pattern is DiscardPatternSyntax);
+            var discardIndex = discardArm != null ? arms.IndexOf(discardArm) : arms.Count;
+
+            var newArms = arms;
+            foreach (var missingType in missingTypes)
+            {
+                var newArm = CreateSwitchArmForType(missingType);
+                newArms = newArms.Insert(discardIndex, newArm);
+                discardIndex++;
+            }
+
+            var newSwitchExpression = switchExpression.WithArms(newArms)
+                .WithAdditionalAnnotations(Formatter.Annotation);
+
+            var newRoot = root.ReplaceNode(switchExpression, newSwitchExpression);
+            return document.WithSyntaxRoot(newRoot);
+        }
+
+        private async Task<Document> AddMissingCasesToSwitchExpressionAsync(
+            Document document,
+            SwitchExpressionSyntax switchExpression,
+            IEnumerable<INamedTypeSymbol> missingTypes,
+            CancellationToken cancellationToken)
+        {
+            var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+            if (root == null)
+            {
+                return document;
+            }
+
+            if (!missingTypes.Any())
             {
                 return document;
             }

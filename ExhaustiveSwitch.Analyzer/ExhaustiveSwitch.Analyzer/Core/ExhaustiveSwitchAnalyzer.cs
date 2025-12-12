@@ -256,11 +256,29 @@ namespace ExhaustiveSwitch.Analyzer
             // 不足している型のうち、報告すべき型をフィルタリング
             var casesToReport = FilterAncestorsWithUnhandledDescendants(missingCases, hierarchyInfo);
 
+            // すべての欠けている型の情報を準備（最初の診断で使用）
+            var allMissingTypesNames = string.Join(";", casesToReport.Select(t => t.ToDisplayString(SimpleTypeNameFormat)));
+            var allMissingTypesMetadata = string.Join(";", casesToReport.Select(MetadataHelpers.GetFullMetadataName));
+
+            bool isFirst = true;
             foreach (var missingCase in casesToReport)
             {
                 var properties = ImmutableDictionary.CreateBuilder<string, string>();
                 properties.Add("MissingType", missingCase.ToDisplayString(SimpleTypeNameFormat));
                 properties.Add("MissingTypeMetadata", MetadataHelpers.GetFullMetadataName(missingCase));
+
+                // 最初の診断の場合のみ、すべての欠けている型の情報を追加
+                if (isFirst)
+                {
+                    properties.Add("IsFirstDiagnostic", "true");
+                    properties.Add("AllMissingTypes", allMissingTypesNames);
+                    properties.Add("AllMissingTypesMetadata", allMissingTypesMetadata);
+                    isFirst = false;
+                }
+                else
+                {
+                    properties.Add("IsFirstDiagnostic", "false");
+                }
 
                 var diagnostic = Diagnostic.Create(
                     Rule,

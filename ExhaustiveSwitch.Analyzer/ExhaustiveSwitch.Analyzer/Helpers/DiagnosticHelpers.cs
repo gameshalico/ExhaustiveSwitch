@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
 
 namespace ExhaustiveSwitch.Analyzer
@@ -29,6 +30,36 @@ namespace ExhaustiveSwitch.Analyzer
         {
             diagnostic.Properties.TryGetValue("MissingType", out var typeName);
             return typeName;
+        }
+
+        /// <summary>
+        /// 診断情報からすべての不足している型のシンボルを取得します。
+        /// </summary>
+        /// <param name="diagnostic">診断情報</param>
+        /// <param name="compilation">コンパイル情報</param>
+        /// <returns>すべての不足している型のシンボルのリスト</returns>
+        public static List<INamedTypeSymbol> GetAllMissingTypesFromDiagnostic(Diagnostic diagnostic, Compilation compilation)
+        {
+            var result = new List<INamedTypeSymbol>();
+
+            if (diagnostic.Properties.TryGetValue("AllMissingTypesMetadata", out var allMetadataNames) &&
+                !string.IsNullOrEmpty(allMetadataNames))
+            {
+                var metadataNames = allMetadataNames.Split(';');
+                foreach (var metadataName in metadataNames)
+                {
+                    if (!string.IsNullOrEmpty(metadataName))
+                    {
+                        var type = compilation.GetTypeByMetadataName(metadataName);
+                        if (type != null)
+                        {
+                            result.Add(type);
+                        }
+                    }
+                }
+            }
+
+            return result;
         }
     }
 }
