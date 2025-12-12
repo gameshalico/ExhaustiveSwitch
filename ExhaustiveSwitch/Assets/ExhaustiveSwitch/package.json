@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "displayName": "Exhaustive Switch",
     "description": "Enforce exhaustive switch statements on abstract classes and interfaces.",
-    "unity": "2022.3.12f1",
+    "unity": "2022.3",
     "author": {
         "name": "gameshalico",
         "url": "https://github.com/gameshalico"
