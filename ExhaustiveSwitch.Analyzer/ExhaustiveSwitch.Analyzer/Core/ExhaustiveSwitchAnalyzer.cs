@@ -51,6 +51,11 @@ namespace ExhaustiveSwitch.Analyzer
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule, OrphanCaseRule);
 
+        private static readonly SymbolDisplayFormat SimpleTypeNameFormat = new SymbolDisplayFormat(
+            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameOnly,
+            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes);
+
         public override void Initialize(AnalysisContext context)
         {
             context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
@@ -254,15 +259,15 @@ namespace ExhaustiveSwitch.Analyzer
             foreach (var missingCase in casesToReport)
             {
                 var properties = ImmutableDictionary.CreateBuilder<string, string>();
-                properties.Add("MissingType", missingCase.ToDisplayString());
+                properties.Add("MissingType", missingCase.ToDisplayString(SimpleTypeNameFormat));
                 properties.Add("MissingTypeMetadata", MetadataHelpers.GetFullMetadataName(missingCase));
 
                 var diagnostic = Diagnostic.Create(
                     Rule,
                     location,
                     properties.ToImmutable(),
-                    exhaustiveType.ToDisplayString(),
-                    missingCase.ToDisplayString());
+                    exhaustiveType.ToDisplayString(SimpleTypeNameFormat),
+                    missingCase.ToDisplayString(SimpleTypeNameFormat));
                 context.ReportDiagnostic(diagnostic);
             }
         }
@@ -513,7 +518,7 @@ namespace ExhaustiveSwitch.Analyzer
                 var diagnostic = Diagnostic.Create(
                     OrphanCaseRule,
                     typeSymbol.Locations.FirstOrDefault(),
-                    typeSymbol.ToDisplayString());
+                    typeSymbol.ToDisplayString(SimpleTypeNameFormat));
                 context.ReportDiagnostic(diagnostic);
             }
         }

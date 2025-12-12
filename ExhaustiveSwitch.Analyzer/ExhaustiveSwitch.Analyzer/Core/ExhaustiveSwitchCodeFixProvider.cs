@@ -56,19 +56,16 @@ namespace ExhaustiveSwitch.Analyzer
                         allDiagnostics.ToArray());
                 }
 
-                var individualActions = new List<CodeAction>();
                 foreach (var diag in allDiagnostics)
                 {
                     var typeName = DiagnosticHelpers.GetMissingTypeNameFromDiagnostic(diag);
-                    individualActions.Add(CodeAction.Create(
-                        title: string.Format(Resources.CodeFixAddSingleCase, typeName),
-                        createChangedDocument: c => AddMissingCasesToSwitchStatementAsync(context.Document, switchStatement, new[] { diag }, c),
-                        equivalenceKey: $"AddSingleCase_{typeName}"));
+                    context.RegisterCodeFix(
+                        CodeAction.Create(
+                            title: string.Format(Resources.CodeFixAddSingleCase, typeName),
+                            createChangedDocument: c => AddMissingCasesToSwitchStatementAsync(context.Document, switchStatement, new[] { diag }, c),
+                            equivalenceKey: $"AddSingleCase_{typeName}"),
+                        diag);
                 }
-                context.RegisterCodeFix(
-                    CodeAction.Create(Resources.CodeFixAddIndividualCases, individualActions.ToImmutableArray(), true),
-                    allDiagnostics);
-
                 return;
             }
 
@@ -89,18 +86,14 @@ namespace ExhaustiveSwitch.Analyzer
                         allDiagnostics);
                 }
 
-                var individualActions = new List<CodeAction>();
                 foreach (var diag in allDiagnostics)
                 {
                     var typeName = DiagnosticHelpers.GetMissingTypeNameFromDiagnostic(diag);
-                    individualActions.Add(CodeAction.Create(
+                    context.RegisterCodeFix(CodeAction.Create(
                         title: string.Format(Resources.CodeFixAddSingleCase, typeName),
                         createChangedDocument: c => AddMissingCasesToSwitchExpressionAsync(context.Document, switchExpression, new[] { diag }, c),
-                        equivalenceKey: $"AddSingleCase_{typeName}"));
+                        equivalenceKey: $"AddSingleCase_{typeName}"), diag);
                 }
-                context.RegisterCodeFix(
-                    CodeAction.Create(Resources.CodeFixAddIndividualCases, individualActions.ToImmutableArray(), true),
-                    allDiagnostics);
             }
         }
 
