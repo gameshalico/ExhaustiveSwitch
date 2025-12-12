@@ -23,68 +23,51 @@ using ExhaustiveSwitch;
 
 // Add [Exhaustive] attribute
 [Exhaustive]
-public interface IEnemy
-{
-    public void Attack();
-}
+public interface IItem { /* ... */ }
 
-public interface IWalkable
-{
-    public void Walk();
-}
+public interface IConsumable { /* ... */ }
 
-public interface IFlyable
-{
-    public void Fly() { }
-}
+public interface IEquippable { /* ... */ }
 
 // Add [Case] attribute to each concrete class
 [Case]
-public class Goblin : IEnemy, IWalkable
-{
-    public void Attack() { }
-    public void Walk() { }
-}
+public class Potion : IItem, IConsumable { /* ... */ }
 
 [Case]
-public class Dragon : IEnemy, IFlyable
-{
-    public void Attack() { }
-    public void Fly() { }
-}
+public class Bomb : IItem, IConsumable { /* ... */ }
 
 [Case]
-public class Harpy : IEnemy, IFlyable
-{
-    public void Attack() { }
-    public void Fly() { }
-}
+public class Armor : IItem, IEquippable { /* ... */ }
 
-public void ProcessEnemy(IEnemy enemy)
+public void ProcessItem(IItem item)
 {
-    // Branch by concrete type (error if a new enemy is implemented)
-    switch (enemy)
+    // Branch by concrete type (error if a new item is implemented)
+    switch (item)
     {
-        case Goblin goblin:
-            // Goblin-specific processing
+        case Potion potion:
+            // Potion-specific processing
             break;
-        case Dragon dragon:
-            // Dragon-specific processing
+        case Bomb bomb:
+            // Bomb-specific processing
             break;
-        case Harpy harpy:
-            // Harpy-specific processing
+        case Armor armor:
+            // Armor-specific processing
             break;
+        default:
+            throw new ArgumentOutOfRangeException(nameof(item));
     }
 
-    // Branch by interface type (error if a type that neither walks nor flies is implemented)
-    switch (enemy)
+    // Branch by interface type (error if a type that is neither consumable nor equippable is implemented)
+    switch (item)
     {
-        case IWalkable walkable:
-            // Processing for walking enemies (Goblin)
+        case IConsumable consumable:
+            // Processing for consumable items (Potion, Bomb)
             break;
-        case IFlyable flyable:
-            // Processing for flying enemies (Dragon and Harpy)
+        case IEquippable equippable:
+            // Processing for equippable items (Armor)
             break;
+        default:
+            throw new ArgumentOutOfRangeException(nameof(item));
     }
 }
 
@@ -98,13 +81,13 @@ If not all `[Case]` types are explicitly handled, the following error will be is
 Note that if a type is handled by a parent type, no error will be issued.
 
 ```
-Error EXH0001: Case 'Dragon' of Exhaustive type 'IEnemy' is not handled in the switch.
+Error EXH0001: Case 'Bomb' of Exhaustive type 'IItem' is not handled in the switch.
 ```
 
 If a type with the `[Case]` attribute does not inherit/implement a type with the `[Exhaustive]` attribute, the following warning will be issued.
 
 ```
-Warning EXH0002: Type 'Goblin' with Case attribute does not inherit/implement Exhaustive type 'IEnemy'.
+Warning EXH0002: Type 'Potion' with Case attribute does not inherit/implement Exhaustive type 'IItem'.
 ```
 
 ### Limitations

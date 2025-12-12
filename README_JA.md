@@ -23,68 +23,51 @@ using ExhaustiveSwitch;
 
 // [Exhaustive]属性を付与
 [Exhaustive]
-public interface IEnemy
-{
-    public void Attack();
-}
+public interface IItem { /* ... */ }
 
-public interface IWalkable
-{
-    public void Walk();
-}
+public interface IConsumable { /* ... */ }
 
-public interface IFlyable
-{
-    public void Fly() { }
-}
+public interface IEquippable { /* ... */ }
 
 // 各具象クラスに[Case]属性を付与
 [Case]
-public class Goblin : IEnemy, IWalkable
-{
-    public void Attack() { }
-    public void Walk() { }
-}
+public class Potion : IItem, IConsumable { /* ... */ }
 
 [Case]
-public class Dragon : IEnemy, IFlyable
-{
-    public void Attack() { }
-    public void Fly() { }
-}
+public class Bomb : IItem, IConsumable { /* ... */ }
 
 [Case]
-public class Harpy : IEnemy, IFlyable
-{
-    public void Attack() { }
-    public void Fly() { }
-}
+public class Armor : IItem, IEquippable { /* ... */ }
 
-public void ProcessEnemy(IEnemy enemy)
+public void ProcessItem(IItem item)
 {
-    // 具象型で分岐 (新たに敵が実装されるとエラー)
-    switch (enemy)
+    // 具象型で分岐 (新たにアイテムが実装されるとエラー)
+    switch (item)
     {
-        case Goblin goblin:
-            // Goblin専用の処理
+        case Potion potion:
+            // Potion専用の処理
             break;
-        case Dragon dragon:
-            // Dragon専用の処理
+        case Bomb bomb:
+            // Bomb専用の処理
             break;
-        case Harpy harpy:
-            // Harpy専用の処理
+        case Armor armor:
+            // Armor専用の処理
             break;
+        default:
+            throw new ArgumentOutOfRangeException(nameof(item));
     }
 
-    // インターフェース型で分岐 (歩くのでも、飛行するのでもない型が実装されるとエラー)
-    switch (enemy)
+    // 上位の型で分岐 (消費可能でも、装備可能でもないアイテムが追加されるとエラー)
+    switch (item)
     {
-        case IWalkable walkable:
-            // 歩く敵の処理 (Goblin)
+        case IConsumable consumable:
+            // 消費可能Itemの処理 (Potion, Bomb)
             break;
-        case IFlyable flyable:
-            // 飛行する敵の処理(DragonとHarpy)
+        case IEquippable equippable:
+            // 装備可能Itemの処理 (Armor)
             break;
+        default:
+            throw new ArgumentOutOfRangeException(nameof(item));
     }
 }
 
@@ -98,13 +81,13 @@ public void ProcessEnemy(IEnemy enemy)
 尚、上位の型で処理されている場合は、エラーは発行されません。
 
 ```
-エラー EXH0001: Exhaustive 型 'IEnemy' の 'Dragon' ケースが switch で処理されていません。
+エラー EXH0001: Exhaustive 型 'IItem' の 'Bomb' ケースが switch で処理されていません。
 ```
 
 `[Case]`属性が付与された型が`[Exhaustive]`属性を継承/実装していない場合、以下のような警告が発行されます。
 
 ```
-警告 EXH0002: Case 属性が付与された型 'Goblin' は Exhaustive 型 'IEnemy' を継承/実装していません。
+警告 EXH0002: Case 属性が付与された型 'Potion' は Exhaustive 型 'IItem' を継承/実装していません。
 ```
 
 ### 制限
