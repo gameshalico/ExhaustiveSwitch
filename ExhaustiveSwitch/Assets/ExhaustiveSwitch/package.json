@@ -1,6 +1,6 @@
 {
     "name": "com.gameshalico.exhaustive-switch",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "displayName": "Exhaustive Switch",
     "description": "Enforce exhaustive switch statements on abstract classes and interfaces.",
     "unity": "2022.3.12f1",
