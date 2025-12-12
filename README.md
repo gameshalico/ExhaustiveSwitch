@@ -1,24 +1,27 @@
+[![license](https://img.shields.io/badge/LICENSE-MIT-green.svg)](LICENSE)
 # ExhaustiveSwitch
 
-**ExhaustiveSwitch** は、Roslyn Analyzerを使用して、`switch`文/式における継承階層の網羅を強制するライブラリです。
+**ExhaustiveSwitch** is a library that enforces exhaustive handling of inheritance hierarchies in `switch` statements/expressions using Roslyn Analyzer.
 
-`[Exhaustive]`属性と`[Case]`属性を使用することで、`switch`文/式で扱うべき型が処理されていないことをエラーとして検出することができます。
+By using the `[Exhaustive]` and `[Case]` attributes, you can detect unhandled types in `switch` statements/expressions as errors.
 
-これにより、以下のようなメリットを得ることができます
-- 新しくクラスを追加した際の考慮漏れを防止できる
-- 型安全な型による処理の分岐が実現できる (Visitorパターンと違い、抽象レイヤーが具象レイヤーを知る必要がない、抽象的に扱える)
+This provides the following benefits:
+- Prevents oversight when adding new classes
+- Enables type-safe branching based on types (Unlike the Visitor pattern, the abstract layer doesn't need to know about concrete layers, allowing for more abstract handling)
 
-また、CodeFixProvider による、網羅されていないケースの追加にも対応しています。
+Also supports CodeFixProvider to add missing cases automatically.
+
+[日本語版READMEはこちら](./README_JA.md)
 
 ![](/docs/images/code-fix.png)
 
 
-## 使用方法
+## Usage
 
 ```csharp
 using ExhaustiveSwitch;
 
-// [Exhaustive]属性を付与
+// Add [Exhaustive] attribute
 [Exhaustive]
 public interface IEnemy
 {
@@ -35,7 +38,7 @@ public interface IFlyable
     public void Fly() { }
 }
 
-// 各具象クラスに[Case]属性を付与
+// Add [Case] attribute to each concrete class
 [Case]
 public class Goblin : IEnemy, IWalkable
 {
@@ -59,54 +62,54 @@ public class Harpy : IEnemy, IFlyable
 
 public void ProcessEnemy(IEnemy enemy)
 {
-    // 具象型で分岐 (新たに敵が実装されるとエラー)
+    // Branch by concrete type (error if a new enemy is implemented)
     switch (enemy)
     {
         case Goblin goblin:
-            // Goblin専用の処理
+            // Goblin-specific processing
             break;
         case Dragon dragon:
-            // Dragon専用の処理
+            // Dragon-specific processing
             break;
         case Harpy harpy:
-            // Harpy専用の処理
+            // Harpy-specific processing
             break;
     }
 
-    // インターフェース型で分岐 (歩くのでも、飛行するのでもない型が実装されるとエラー)
+    // Branch by interface type (error if a type that neither walks nor flies is implemented)
     switch (enemy)
     {
         case IWalkable walkable:
-            // 歩く敵の処理 (Goblin)
+            // Processing for walking enemies (Goblin)
             break;
         case IFlyable flyable:
-            // 飛行する敵の処理（DragonとHarpy）
+            // Processing for flying enemies (Dragon and Harpy)
             break;
     }
 }
 
 ```
 
-その他の使用方法は、[Samples](ExhaustiveSwitch/Assets/Samples/README.md) を参照してください。
+For other usage examples, please refer to [Samples](ExhaustiveSwitch/Assets/Samples/README.md).
 
-### エラーメッセージ
+### Error Messages
 
-すべての`[Case]`型が明示的に処理されていない場合、以下のようなエラーが発行されます。
-尚、上位の型で処理されている場合は、エラーは発行されません。
-
-```
-エラー EXH0001: Exhaustive 型 'IEnemy' の 'Dragon' ケースが switch で処理されていません。
-```
-
-`[Case]`属性が付与された型が`[Exhaustive]`属性を継承/実装していない場合、以下のような警告が発行されます。
+If not all `[Case]` types are explicitly handled, the following error will be issued.
+Note that if a type is handled by a parent type, no error will be issued.
 
 ```
-警告 EXH0002: Case 属性が付与された型 'Goblin' は Exhaustive 型 'IEnemy' を継承/実装していません。
-``` 
+Error EXH0001: Case 'Dragon' of Exhaustive type 'IEnemy' is not handled in the switch.
+```
 
-### 制限
+If a type with the `[Case]` attribute does not inherit/implement a type with the `[Exhaustive]` attribute, the following warning will be issued.
 
-以下のような、複数の型の組み合わせに対しては対応していません
+```
+Warning EXH0002: Type 'Goblin' with Case attribute does not inherit/implement Exhaustive type 'IEnemy'.
+```
+
+### Limitations
+
+Combinations of multiple types like the following are not supported:
 ```csharp
 switch (sample1, sample2)
 {
@@ -121,17 +124,17 @@ switch (sample1, sample2)
 }
 ```
 
-# セットアップ
-## 要件
-- Unity 2022.3.12f1 以降
+# Setup
+## Requirements
+- Unity 2022.3.12f1 or later
 
-## インストール
+## Installation
 
-Unity Package Managerを使用して、ExhaustiveSwitchをプロジェクトに追加します。
+Add ExhaustiveSwitch to your project using Unity Package Manager.
 
-1. Window > Package Management > PackageManager からPackage Managerを開く
-2. 左上の「+」ボタンをクリックし、「Add package from git URL...」を選択
-3. 以下のURLを入力して「Install」ボタンをクリック
+1. Open Package Manager from Window > Package Management > Package Manager
+2. Click the "+" button in the top left and select "Add package from git URL..."
+3. Enter the following URL and click the "Install" button
 
 ```
 https://github.com/gameshalico/ExhaustiveSwitch.git?path=ExhaustiveSwitch/Assets/ExhaustiveSwitch
