@@ -1,7 +1,9 @@
 {
     "name": "MultiAssemblySample.Core",
     "rootNamespace": "MultiAssemblySample.Core",
-    "references": [],
+    "references": [
+        "ExhaustiveSwitch"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

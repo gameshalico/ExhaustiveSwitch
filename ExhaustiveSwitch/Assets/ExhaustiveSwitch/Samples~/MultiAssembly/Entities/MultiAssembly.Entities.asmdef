@@ -2,7 +2,8 @@
     "name": "MultiAssemblySample.Entities",
     "rootNamespace": "MultiAssemblySample.Entities",
     "references": [
-        "MultiAssemblySample.Core"
+        "MultiAssemblySample.Core",
+        "ExhaustiveSwitch"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

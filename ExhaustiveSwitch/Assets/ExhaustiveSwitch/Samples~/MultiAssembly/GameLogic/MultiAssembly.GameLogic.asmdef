@@ -3,7 +3,8 @@
     "rootNamespace": "MultiAssemblySample.GameLogic",
     "references": [
         "MultiAssemblySample.Core",
-        "MultiAssemblySample.Entities"
+        "MultiAssemblySample.Entities",
+        "ExhaustiveSwitch"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
