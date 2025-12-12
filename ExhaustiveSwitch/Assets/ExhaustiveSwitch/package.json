@@ -7,5 +7,17 @@
     "author": {
         "name": "gameshalico",
         "url": "https://github.com/gameshalico"
-    }
+    },
+    "samples": [
+        {
+            "displayName": "Basic Usage",
+            "description": "Basic usage of ExhaustiveSwitch with items",
+            "path": "Samples~/BasicUsage"
+        },
+        {
+            "displayName": "Multi Assembly",
+            "description": "Example of using ExhaustiveSwitch across multiple assemblies",
+            "path": "Samples~/MultiAssembly"
+        }
+    ]
 }

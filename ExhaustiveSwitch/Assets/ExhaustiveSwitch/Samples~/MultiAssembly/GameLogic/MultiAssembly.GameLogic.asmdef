@@ -1,0 +1,17 @@
+{
+    "name": "MultiAssemblySample.GameLogic",
+    "rootNamespace": "MultiAssemblySample.GameLogic",
+    "references": [
+        "MultiAssemblySample.Core",
+        "MultiAssemblySample.Entities"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

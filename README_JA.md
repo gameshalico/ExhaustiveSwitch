@@ -73,7 +73,7 @@ public void ProcessItem(IItem item)
 
 ```
 
-その他の使用方法は、[Samples](ExhaustiveSwitch/Assets/Samples/README.md) を参照してください。
+その他の使用方法は、パッケージに含まれるサンプルを参照してください。インストール後、Package Managerからサンプル（Basic Usage、Multi Assembly）をインポートできます。
 
 ### エラーメッセージ
 

@@ -73,7 +73,7 @@ public void ProcessItem(IItem item)
 
 ```
 
-For other usage examples, please refer to [Samples](ExhaustiveSwitch/Assets/Samples/README.md).
+For other usage examples, please refer to the samples included in the package. After installation, you can import samples from the Package Manager (Basic Usage, Multi Assembly).
 
 ### Error Messages
 
