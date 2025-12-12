@@ -6,8 +6,6 @@ using UnityEngine;
 namespace ExhaustiveSwitchSamples.AdvancedPatterns
 {
     // ===== 式木（Expression Tree）パターン =====
-    // ExhaustiveSwitchを使うことで、従来のVisitorパターンのような
-    // ダブルディスパッチを避けつつ、型安全に式を評価できます
 
     /// <summary>
     /// 数式を表すインターフェース
@@ -309,8 +307,6 @@ namespace ExhaustiveSwitchSamples.AdvancedPatterns
 
     /// <summary>
     /// 式木パターンの使用例
-    /// 従来のVisitorパターンではダブルディスパッチが必要だったが、
-    /// ExhaustiveSwitchを使うことでシンプルに実装できる
     /// </summary>
     public class ExpressionTreeExample
     {
@@ -387,17 +383,6 @@ namespace ExhaustiveSwitchSamples.AdvancedPatterns
             Debug.Log($"\n最適化前: {printer.Print(expr3)}");
             IExpression optimized3 = optimizer.Optimize(expr3);
             Debug.Log($"最適化後: {printer.Print(optimized3)}");
-
-            Debug.Log("\n=== Visitorパターンとの比較 ===");
-            Debug.Log("従来のVisitorパターン:");
-            Debug.Log("- IExpression に Accept(IVisitor) メソッドが必要");
-            Debug.Log("- 各具象型で visitor.Visit(this) を呼ぶ（ダブルディスパッチ）");
-            Debug.Log("- 型を追加するたびに IVisitor に新しいメソッドが必要");
-            Debug.Log("\nExhaustiveSwitch:");
-            Debug.Log("- IExpression はデータだけを持つ（処理ロジックと分離）");
-            Debug.Log("- switch文で直接型判定（ダブルディスパッチ不要）");
-            Debug.Log("- 新しい処理の追加が容易");
-            Debug.Log("- 型を追加すると全ての switch でコンパイルエラーが出る");
         }
     }
 }
