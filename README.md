@@ -13,7 +13,7 @@ Also supports CodeFixProvider to add missing cases automatically.
 
 [日本語版READMEはこちら](./README_JA.md)
 
-![](/docs/images/code-fix.png)
+![](/docs/images/header.png)
 
 
 ## Usage

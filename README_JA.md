@@ -13,7 +13,7 @@
 
 [English README is here](./README.md)
 
-![](/docs/images/code-fix.png)
+![](/docs/images/header_ja.png)
 
 
 ## 使用方法
