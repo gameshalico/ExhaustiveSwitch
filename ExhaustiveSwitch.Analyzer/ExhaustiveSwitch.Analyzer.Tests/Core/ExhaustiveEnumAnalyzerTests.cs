@@ -379,6 +379,82 @@ public class Program
             await VerifyAnalyzerAsync(test, expected);
         }
 
+        /// <summary>
+        /// whenガード付きパターンでenumメンバーを処理している場合
+        /// </summary>
+        [Fact]
+        public async Task WhenHandlingEnumWithWhenGuard_RecognizesHandledMember()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public void Process(GameState state, bool isActive)
+    {
+        {|#0:switch (state)
+        {
+            case GameState.Menu:
+                break;
+            case GameState.Playing when isActive:
+                break;
+        }|}
+    }
+}";
+
+            var expected = new DiagnosticResult("EXH1001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState", "Paused");
+
+            await VerifyAnalyzerAsync(test, expected);
+        }
+
+        /// <summary>
+        /// whenガード付きパターンですべてのenumメンバーを処理している場合、エラーなし
+        /// </summary>
+        [Fact]
+        public async Task WhenAllEnumMembersHandledWithWhenGuard_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public void Process(GameState state, bool isActive)
+    {
+        switch (state)
+        {
+            case GameState.Menu:
+                break;
+            case GameState.Playing when isActive:
+                break;
+            case GameState.Playing:
+                break;
+            case GameState.Paused:
+                break;
+        }
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
         private static async Task VerifyAnalyzerAsync(string source, params DiagnosticResult[] expected)
         {
             var test = new CSharpAnalyzerTest<ExhaustiveEnumAnalyzer, DefaultVerifier>

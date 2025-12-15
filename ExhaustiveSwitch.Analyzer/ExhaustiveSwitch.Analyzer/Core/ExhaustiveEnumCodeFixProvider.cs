@@ -18,7 +18,9 @@ namespace ExhaustiveSwitch.Analyzer
     [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ExhaustiveEnumCodeFixProvider)), Shared]
     public class ExhaustiveEnumCodeFixProvider : CodeFixProvider
     {
-        public sealed override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create("EXH1001");
+        private const string DiagnosticId = "EXH1001";
+
+        public sealed override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(DiagnosticId);
 
         public sealed override FixAllProvider GetFixAllProvider()
         {
@@ -44,32 +46,10 @@ namespace ExhaustiveSwitch.Analyzer
             if (switchStatement != null)
             {
                 var allDiagnostics = context.Diagnostics
-                    .Where(d => d.Id == "EXH1001")
+                    .Where(d => d.Id == DiagnosticId)
                     .ToList();
 
-                // 診断情報から不足しているenumメンバーを収集
-                var missingMembers = new List<string>();
-                string enumTypeName = null;
-                string enumTypeMetadata = null;
-
-                foreach (var diag in allDiagnostics)
-                {
-                    if (diag.Properties.TryGetValue("MissingMember", out var member))
-                    {
-                        if (!missingMembers.Contains(member))
-                        {
-                            missingMembers.Add(member);
-                        }
-                    }
-                    if (diag.Properties.TryGetValue("EnumType", out var typeName))
-                    {
-                        enumTypeName = typeName;
-                    }
-                    if (diag.Properties.TryGetValue("EnumTypeMetadata", out var typeMetadata))
-                    {
-                        enumTypeMetadata = typeMetadata;
-                    }
-                }
+                var (missingMembers, enumTypeName, enumTypeMetadata) = ExtractDiagnosticInfo(allDiagnostics);
 
                 if (missingMembers.Count == 0)
                 {
@@ -107,32 +87,10 @@ namespace ExhaustiveSwitch.Analyzer
             if (switchExpression != null)
             {
                 var allDiagnostics = context.Diagnostics
-                    .Where(d => d.Id == "EXH1001")
+                    .Where(d => d.Id == DiagnosticId)
                     .ToArray();
 
-                // 診断情報から不足しているenumメンバーを収集
-                var missingMembers = new List<string>();
-                string enumTypeName = null;
-                string enumTypeMetadata = null;
-
-                foreach (var diag in allDiagnostics)
-                {
-                    if (diag.Properties.TryGetValue("MissingMember", out var member))
-                    {
-                        if (!missingMembers.Contains(member))
-                        {
-                            missingMembers.Add(member);
-                        }
-                    }
-                    if (diag.Properties.TryGetValue("EnumType", out var typeName))
-                    {
-                        enumTypeName = typeName;
-                    }
-                    if (diag.Properties.TryGetValue("EnumTypeMetadata", out var typeMetadata))
-                    {
-                        enumTypeMetadata = typeMetadata;
-                    }
-                }
+                var (missingMembers, enumTypeName, enumTypeMetadata) = ExtractDiagnosticInfo(allDiagnostics);
 
                 if (missingMembers.Count == 0)
                 {
@@ -324,6 +282,38 @@ namespace ExhaustiveSwitch.Analyzer
                 throwExpression);
 
             return arm;
+        }
+
+        /// <summary>
+        /// 診断情報から不足しているenumメンバー情報を抽出
+        /// </summary>
+        private static (List<string> missingMembers, string enumTypeName, string enumTypeMetadata) ExtractDiagnosticInfo(
+            IEnumerable<Diagnostic> diagnostics)
+        {
+            var missingMembers = new List<string>();
+            string enumTypeName = null;
+            string enumTypeMetadata = null;
+
+            foreach (var diag in diagnostics)
+            {
+                if (diag.Properties.TryGetValue("MissingMember", out var member))
+                {
+                    if (!missingMembers.Contains(member))
+                    {
+                        missingMembers.Add(member);
+                    }
+                }
+                if (diag.Properties.TryGetValue("EnumType", out var typeName))
+                {
+                    enumTypeName = typeName;
+                }
+                if (diag.Properties.TryGetValue("EnumTypeMetadata", out var typeMetadata))
+                {
+                    enumTypeMetadata = typeMetadata;
+                }
+            }
+
+            return (missingMembers, enumTypeName, enumTypeMetadata);
         }
     }
 }
