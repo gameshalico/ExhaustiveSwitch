@@ -98,10 +98,8 @@ namespace ExhaustiveSwitch.Analyzer
                 semanticModel,
                 enumType);
 
-            // 不足しているメンバーを検出（定義順を維持）
-            var missingMembers = EnumAnalysisHelpers.GetAllEnumMembersInOrder(enumType)
-                .Where(m => !handledMembers.Contains(m))
-                .ToList();
+            // 不足しているメンバーを検出
+            var missingMembers = allMembers.Except(handledMembers);
 
             foreach (var missing in missingMembers)
             {
@@ -157,10 +155,8 @@ namespace ExhaustiveSwitch.Analyzer
                 semanticModel,
                 enumType);
 
-            // 不足しているメンバーを検出（定義順を維持）
-            var missingMembers = EnumAnalysisHelpers.GetAllEnumMembersInOrder(enumType)
-                .Where(m => !handledMembers.Contains(m))
-                .ToList();
+            // 不足しているメンバーを検出
+            var missingMembers = allMembers.Except(handledMembers);
 
             foreach (var missing in missingMembers)
             {

@@ -47,7 +47,7 @@ namespace ExhaustiveSwitch.Analyzer
                     .Where(d => d.Id == "EXH1001")
                     .ToList();
 
-                // 診断情報から不足しているenumメンバーを収集（診断の順序を維持）
+                // 診断情報から不足しているenumメンバーを収集
                 var missingMembers = new List<string>();
                 string enumTypeName = null;
                 string enumTypeMetadata = null;
@@ -110,7 +110,7 @@ namespace ExhaustiveSwitch.Analyzer
                     .Where(d => d.Id == "EXH1001")
                     .ToArray();
 
-                // 診断情報から不足しているenumメンバーを収集（診断の順序を維持）
+                // 診断情報から不足しているenumメンバーを収集
                 var missingMembers = new List<string>();
                 string enumTypeName = null;
                 string enumTypeMetadata = null;
@@ -197,7 +197,7 @@ namespace ExhaustiveSwitch.Analyzer
             var defaultIndex = defaultSection != null ? sections.IndexOf(defaultSection) : sections.Count;
 
             var newSections = sections;
-            // 逆順で挿入することで、定義順を維持
+            // 逆順で挿入することで、リストの先頭から順に挿入される
             for (int i = missingMembers.Count - 1; i >= 0; i--)
             {
                 var member = missingMembers[i];
@@ -244,7 +244,7 @@ namespace ExhaustiveSwitch.Analyzer
             var discardIndex = discardArm != null ? arms.IndexOf(discardArm) : arms.Count;
 
             var newArms = arms;
-            // 逆順で挿入することで、定義順を維持
+            // 逆順で挿入することで、リストの先頭から順に挿入される
             for (int i = missingMembers.Count - 1; i >= 0; i--)
             {
                 var member = missingMembers[i];
