@@ -75,6 +75,45 @@ public void ProcessItem(IItem item)
 
 その他の使用方法は、パッケージに含まれるサンプルを参照してください。インストール後、Package Managerからサンプル（Basic Usage、Multi Assembly）をインポートできます。
 
+### Enumのサポート
+
+ExhaustiveSwitchは、列挙型(enum)の網羅性チェックにも対応しています。enum に `[Exhaustive]` 属性を付与することで、switch文/式ですべてのenum値が処理されているかを検証できます。
+
+```csharp
+using ExhaustiveSwitch;
+
+// enumに[Exhaustive]属性を付与
+[Exhaustive]
+public enum GameState
+{
+    Title,
+    Playing,
+    Paused,
+    GameOver
+}
+
+public void ProcessGameState(GameState state)
+{
+    // すべてのenum値が処理されていない場合はエラー
+    switch (state)
+    {
+        case GameState.Title:
+            // タイトル画面の処理
+            break;
+        case GameState.Playing:
+            // プレイ中の処理
+            break;
+        case GameState.Paused:
+            // 一時停止中の処理
+            break;
+        case GameState.GameOver:
+            // ゲームオーバーの処理
+            break;
+        // 新しいenum値を追加すると、ここでエラーが発生
+    }
+}
+```
+
 ### エラーメッセージ
 
 すべての`[Case]`型が明示的に処理されていない場合、以下のようなエラーが発行されます。
@@ -82,6 +121,11 @@ public void ProcessItem(IItem item)
 
 ```
 エラー EXH0001: Exhaustive 型 'IItem' の 'Bomb' ケースが switch で処理されていません。
+```
+
+enumの場合:
+```
+エラー EXH1001: Exhaustive enum 'GameState' の enum 値 'GameState.Paused' が switch で処理されていません。
 ```
 
 `[Case]`属性が付与された型が`[Exhaustive]`属性を継承/実装していない場合、以下のような警告が発行されます。

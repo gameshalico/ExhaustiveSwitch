@@ -75,6 +75,45 @@ public void ProcessItem(IItem item)
 
 For other usage examples, please refer to the samples included in the package. After installation, you can import samples from the Package Manager (Basic Usage, Multi Assembly).
 
+### Enum Support
+
+ExhaustiveSwitch also supports exhaustive checking for enums. Add the `[Exhaustive]` attribute to an enum to ensure all enum values are handled in switch statements/expressions.
+
+```csharp
+using ExhaustiveSwitch;
+
+// Add [Exhaustive] attribute to enum
+[Exhaustive]
+public enum GameState
+{
+    Title,
+    Playing,
+    Paused,
+    GameOver
+}
+
+public void ProcessGameState(GameState state)
+{
+    // Error if any enum value is not handled
+    switch (state)
+    {
+        case GameState.Title:
+            // Title screen processing
+            break;
+        case GameState.Playing:
+            // Playing processing
+            break;
+        case GameState.Paused:
+            // Paused processing
+            break;
+        case GameState.GameOver:
+            // Game over processing
+            break;
+        // If you add a new enum value, an error will occur here
+    }
+}
+```
+
 ### Error Messages
 
 If not all `[Case]` types are explicitly handled, the following error will be issued.
@@ -82,6 +121,11 @@ Note that if a type is handled by a parent type, no error will be issued.
 
 ```
 Error EXH0001: Case 'Bomb' of Exhaustive type 'IItem' is not handled in the switch.
+```
+
+For enums:
+```
+Error EXH1001: Enum value 'GameState.Paused' of Exhaustive enum 'GameState' is not handled in the switch.
 ```
 
 If a type with the `[Case]` attribute does not inherit/implement a type with the `[Exhaustive]` attribute, the following warning will be issued.
