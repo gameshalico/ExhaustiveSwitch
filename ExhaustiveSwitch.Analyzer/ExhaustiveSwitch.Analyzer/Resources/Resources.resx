@@ -153,4 +153,16 @@
     <value>Types with [Case] attribute should implement or inherit at least one type with [Exhaustive] attribute.</value>
     <comment>The description of the orphan case warning diagnostic</comment>
   </data>
+  <data name="EnumAnalyzerTitle" xml:space="preserve">
+    <value>Exhaustive enum violation</value>
+    <comment>The title of the enum analyzer diagnostic</comment>
+  </data>
+  <data name="EnumAnalyzerMessageFormat" xml:space="preserve">
+    <value>Switch does not handle '{1}' member of Exhaustive enum '{0}'.</value>
+    <comment>The message format for the enum analyzer diagnostic. {0} is the enum type name, {1} is the missing enum member name.</comment>
+  </data>
+  <data name="EnumAnalyzerDescription" xml:space="preserve">
+    <value>All enum members must be explicitly handled in switch statements on enums with [Exhaustive] attribute.</value>
+    <comment>The description of the enum analyzer diagnostic</comment>
+  </data>
 </root>

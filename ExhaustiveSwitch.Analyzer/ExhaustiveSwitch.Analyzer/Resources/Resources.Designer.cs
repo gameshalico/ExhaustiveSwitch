@@ -140,5 +140,32 @@ namespace ExhaustiveSwitch.Analyzer {
                 return ResourceManager.GetString("OrphanCaseDescription", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Exhaustive enum violation.
+        /// </summary>
+        internal static string EnumAnalyzerTitle {
+            get {
+                return ResourceManager.GetString("EnumAnalyzerTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Switch does not handle '{1}' member of Exhaustive enum '{0}'..
+        /// </summary>
+        internal static string EnumAnalyzerMessageFormat {
+            get {
+                return ResourceManager.GetString("EnumAnalyzerMessageFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to All enum members must be explicitly handled in switch statements on enums with [Exhaustive] attribute..
+        /// </summary>
+        internal static string EnumAnalyzerDescription {
+            get {
+                return ResourceManager.GetString("EnumAnalyzerDescription", resourceCulture);
+            }
+        }
     }
 }
