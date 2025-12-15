@@ -7,9 +7,9 @@ using Xunit;
 namespace ExhaustiveSwitch.Analyzer.Tests.Core
 {
     /// <summary>
-    /// ジェネリック型に関するExhaustiveSwitchAnalyzerのテスト
+    /// ジェネリック型に関するExhaustiveTypeAnalyzerのテスト
     /// </summary>
-    public class ExhaustiveSwitchAnalyzerGenericsTests
+    public class ExhaustiveTypeAnalyzerGenericsTests
     {
         /// <summary>
         /// ジェネリックインターフェース: すべてのケースが処理されている場合、エラーなし
@@ -394,7 +394,7 @@ public class Program
 
         private static async Task VerifyAnalyzerAsync(string source, params DiagnosticResult[] expected)
         {
-            var test = new CSharpAnalyzerTest<ExhaustiveSwitchAnalyzer, DefaultVerifier>
+            var test = new CSharpAnalyzerTest<ExhaustiveTypeAnalyzer, DefaultVerifier>
             {
                 TestCode = source,
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net60,

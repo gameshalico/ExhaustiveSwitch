@@ -207,7 +207,7 @@ public class Program
 
         private static async Task VerifyCodeFixAsync(string source, DiagnosticResult[] expected, string fixedSource, int codeActionIndex)
         {
-            var test = new CSharpCodeFixTest<ExhaustiveSwitchAnalyzer, ExhaustiveSwitchCodeFixProvider, DefaultVerifier>
+            var test = new CSharpCodeFixTest<ExhaustiveTypeAnalyzer, ExhaustiveTypeCodeFixProvider, DefaultVerifier>
             {
                 TestCode = source,
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net60,

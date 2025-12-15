@@ -46,6 +46,18 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
+        /// enumのすべてのメンバー名を定義順で取得
+        /// </summary>
+        public static List<string> GetAllEnumMembersInOrder(INamedTypeSymbol enumType)
+        {
+            return enumType.GetMembers()
+                .OfType<IFieldSymbol>()
+                .Where(f => f.IsConst && f.HasConstantValue)
+                .Select(f => f.Name)
+                .ToList();
+        }
+
+        /// <summary>
         /// switchで処理されているenumメンバーを収集
         /// </summary>
         public static HashSet<string> CollectHandledEnumMembers(

@@ -9,7 +9,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Core
     /// <summary>
     /// 基本的なswitch文/式の網羅性チェックのテスト
     /// </summary>
-    public class ExhaustiveSwitchAnalyzerBasicTests
+    public class ExhaustiveTypeAnalyzerBasicTests
     {
         /// <summary>
         /// すべてのケースが処理されている場合、エラーなし
@@ -451,7 +451,7 @@ public class Program
 
         private static async Task VerifyAnalyzerAsync(string source, params DiagnosticResult[] expected)
         {
-            var test = new CSharpAnalyzerTest<ExhaustiveSwitchAnalyzer, DefaultVerifier>
+            var test = new CSharpAnalyzerTest<ExhaustiveTypeAnalyzer, DefaultVerifier>
             {
                 TestCode = source,
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net60,

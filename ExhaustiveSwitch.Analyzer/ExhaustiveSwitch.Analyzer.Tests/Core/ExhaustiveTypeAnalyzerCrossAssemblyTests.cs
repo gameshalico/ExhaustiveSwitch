@@ -13,7 +13,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Core
     /// <summary>
     /// クロスアセンブリに関するテスト
     /// </summary>
-    public class ExhaustiveSwitchAnalyzerCrossAssemblyTests
+    public class ExhaustiveTypeAnalyzerCrossAssemblyTests
     {
         /// <summary>
         /// クロスアセンブリ: 別アセンブリの[Case]型を検出
@@ -149,7 +149,7 @@ public class Program
         /// </summary>
         private static async Task VerifyCrossAssemblyAnalyzerAsync(string libraryCode, string mainCode, params DiagnosticResult[] expected)
         {
-            var test = new CSharpAnalyzerTest<ExhaustiveSwitchAnalyzer, DefaultVerifier>
+            var test = new CSharpAnalyzerTest<ExhaustiveTypeAnalyzer, DefaultVerifier>
             {
                 TestCode = mainCode,
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net60,
@@ -176,7 +176,7 @@ public class Program
             string mainCode,
             params DiagnosticResult[] expected)
         {
-            var test = new CSharpAnalyzerTest<ExhaustiveSwitchAnalyzer, DefaultVerifier>
+            var test = new CSharpAnalyzerTest<ExhaustiveTypeAnalyzer, DefaultVerifier>
             {
                 TestCode = mainCode,
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net60,

@@ -9,7 +9,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Core
     /// <summary>
     /// パターンマッチングに関するテスト
     /// </summary>
-    public class ExhaustiveSwitchAnalyzerPatternTests
+    public class ExhaustiveTypeAnalyzerPatternTests
     {
         /// <summary>
         /// whenガード条件を持つパターンでも網羅性をチェック
@@ -139,7 +139,7 @@ public class Program
 
         private static async Task VerifyAnalyzerAsync(string source, params DiagnosticResult[] expected)
         {
-            var test = new CSharpAnalyzerTest<ExhaustiveSwitchAnalyzer, DefaultVerifier>
+            var test = new CSharpAnalyzerTest<ExhaustiveTypeAnalyzer, DefaultVerifier>
             {
                 TestCode = source,
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net60,

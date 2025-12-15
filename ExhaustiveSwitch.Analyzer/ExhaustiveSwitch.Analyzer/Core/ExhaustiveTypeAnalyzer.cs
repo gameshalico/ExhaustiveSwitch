@@ -11,7 +11,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace ExhaustiveSwitch.Analyzer
 {
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
-    public class ExhaustiveSwitchAnalyzer : DiagnosticAnalyzer
+    public class ExhaustiveTypeAnalyzer : DiagnosticAnalyzer
     {
         private const string DiagnosticId = "EXH0001";
         private const string OrphanCaseDiagnosticId = "EXH0002";

@@ -9,7 +9,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Core
     /// <summary>
     /// 階層構造（多重継承、ネストしたExhaustive）に関するテスト
     /// </summary>
-    public class ExhaustiveSwitchAnalyzerHierarchyTests
+    public class ExhaustiveTypeAnalyzerHierarchyTests
     {
         /// <summary>
         /// 多重継承: すべての具象型（KingSlime, QueenSlime, Orc）で処理する場合、エラーなし
@@ -522,7 +522,7 @@ public class Program
 
         private static async Task VerifyAnalyzerAsync(string source, params DiagnosticResult[] expected)
         {
-            var test = new CSharpAnalyzerTest<ExhaustiveSwitchAnalyzer, DefaultVerifier>
+            var test = new CSharpAnalyzerTest<ExhaustiveTypeAnalyzer, DefaultVerifier>
             {
                 TestCode = source,
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net60,

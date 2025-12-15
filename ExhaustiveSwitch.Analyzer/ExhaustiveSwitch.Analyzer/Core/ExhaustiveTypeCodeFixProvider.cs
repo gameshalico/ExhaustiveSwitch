@@ -15,8 +15,8 @@ using Microsoft.CodeAnalysis.Simplification;
 
 namespace ExhaustiveSwitch.Analyzer
 {
-    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ExhaustiveSwitchCodeFixProvider)), Shared]
-    public class ExhaustiveSwitchCodeFixProvider : CodeFixProvider
+    [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ExhaustiveTypeCodeFixProvider)), Shared]
+    public class ExhaustiveTypeCodeFixProvider : CodeFixProvider
     {
         public sealed override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create("EXH0001");
         
