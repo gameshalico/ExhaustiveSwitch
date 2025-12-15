@@ -153,4 +153,16 @@
     <value>[Case] 属性を持つ型は、少なくとも1つの [Exhaustive] 属性を持つ型を実装または継承する必要があります。</value>
     <comment>孤立したCase属性の警告診断の説明</comment>
   </data>
+  <data name="EnumAnalyzerTitle" xml:space="preserve">
+    <value>Exhaustive enum の網羅性不足</value>
+    <comment>enum アナライザー診断のタイトル</comment>
+  </data>
+  <data name="EnumAnalyzerMessageFormat" xml:space="preserve">
+    <value>Exhaustive enum '{0}' の '{1}' メンバーが switch で処理されていません。</value>
+    <comment>enum アナライザー診断のメッセージ形式。{0}はenum型名、{1}は不足しているメンバー名。</comment>
+  </data>
+  <data name="EnumAnalyzerDescription" xml:space="preserve">
+    <value>[Exhaustive]属性を持つenumのすべてのメンバーが明示的に処理されている必要があります。</value>
+    <comment>enum アナライザー診断の説明</comment>
+  </data>
 </root>
