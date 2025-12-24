@@ -231,16 +231,25 @@ namespace ExhaustiveSwitch.Analyzer
                 case CasePatternSwitchLabelSyntax casePatternLabel:
                     return ExtractTypeFromPatternSyntax(casePatternLabel.Pattern, semanticModel);
 
-                // switch式: Goblin g => ...
-                case DeclarationPatternSyntax declarationPattern:
-                    return ExtractTypeFromPatternSyntax(declarationPattern, semanticModel);
-
-                default:
-                    if (pattern is PatternSyntax patternSyntax)
+                // switch文の型名のみのパターン: case Goblin:
+                // これはCaseSwitchLabelSyntax（定数パターン用）として解析されるが、
+                // Valueが型名の場合は型パターンとして扱う
+                case CaseSwitchLabelSyntax caseLabel:
+                    if (caseLabel.Value != null)
                     {
-                        return ExtractTypeFromPatternSyntax(patternSyntax, semanticModel);
+                        var typeInfo = semanticModel.GetTypeInfo(caseLabel.Value);
+                        // Valueが型を表す場合（Type != null かつ ConvertedTypeが型そのもの）
+                        if (typeInfo.Type != null && typeInfo.ConvertedType != null &&
+                            SymbolEqualityComparer.Default.Equals(typeInfo.Type, typeInfo.ConvertedType))
+                        {
+                            return typeInfo.Type as INamedTypeSymbol;
+                        }
                     }
-                    break;
+                    return null;
+
+                // switch式または直接PatternSyntax: Goblin g => ... や Goblin => ...
+                case PatternSyntax patternSyntax:
+                    return ExtractTypeFromPatternSyntax(patternSyntax, semanticModel);
             }
 
             return null;
@@ -260,6 +269,24 @@ namespace ExhaustiveSwitch.Analyzer
                 case RecursivePatternSyntax recursivePattern when recursivePattern.Type != null:
                     var recursiveTypeInfo = semanticModel.GetTypeInfo(recursivePattern.Type);
                     return recursiveTypeInfo.Type as INamedTypeSymbol;
+
+                case TypePatternSyntax typePattern:
+                    var typePatternInfo = semanticModel.GetTypeInfo(typePattern.Type);
+                    return typePatternInfo.Type as INamedTypeSymbol;
+
+                case ConstantPatternSyntax constantPattern:
+                    // switch式での型名のみのパターン（Goblin =>）は ConstantPatternSyntax として解析される
+                    if (constantPattern.Expression != null)
+                    {
+                        var constantTypeInfo = semanticModel.GetTypeInfo(constantPattern.Expression);
+                        // Expressionが型を表す場合
+                        if (constantTypeInfo.Type != null && constantTypeInfo.ConvertedType != null &&
+                            SymbolEqualityComparer.Default.Equals(constantTypeInfo.Type, constantTypeInfo.ConvertedType))
+                        {
+                            return constantTypeInfo.Type as INamedTypeSymbol;
+                        }
+                    }
+                    return null;
             }
 
             return null;

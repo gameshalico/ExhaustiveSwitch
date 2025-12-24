@@ -137,6 +137,111 @@ public class Program
             await VerifyAnalyzerAsync(test);
         }
 
+        /// <summary>
+        /// 型名だけのパターン(TypePattern)を正しく認識 - switch文
+        /// </summary>
+        [Fact]
+        public async Task WhenUsingTypePatternInSwitchStatement_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface IEnemy { }
+
+[Case]
+public sealed class Goblin : IEnemy { }
+
+[Case]
+public sealed class Orc : IEnemy { }
+
+public class Program
+{
+    public void Process(IEnemy enemy)
+    {
+        switch (enemy)
+        {
+            case Goblin:
+                break;
+            case Orc:
+                break;
+        }
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
+        /// <summary>
+        /// 型名だけのパターン(TypePattern)を正しく認識 - switch式
+        /// </summary>
+        [Fact]
+        public async Task WhenUsingTypePatternInSwitchExpression_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface IEnemy { }
+
+[Case]
+public sealed class Goblin : IEnemy { }
+
+[Case]
+public sealed class Orc : IEnemy { }
+
+public class Program
+{
+    public string Process(IEnemy enemy)
+    {
+        return enemy switch
+        {
+            Goblin => ""Goblin"",
+            Orc => ""Orc"",
+        };
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
+        /// <summary>
+        /// 型名だけのパターンで網羅が不足している場合はエラー
+        /// </summary>
+        [Fact]
+        public async Task WhenTypePatternMissingCase_Diagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public interface IEnemy { }
+
+[Case]
+public sealed class Goblin : IEnemy { }
+
+[Case]
+public sealed class Orc : IEnemy { }
+
+public class Program
+{
+    public void Process(IEnemy enemy)
+    {
+        {|#0:switch (enemy)
+        {
+            case Goblin:
+                break;
+        }|}
+    }
+}";
+
+            var expected = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("IEnemy", "Orc");
+
+            await VerifyAnalyzerAsync(test, expected);
+        }
+
         private static async Task VerifyAnalyzerAsync(string source, params DiagnosticResult[] expected)
         {
             var test = new CSharpAnalyzerTest<ExhaustiveTypeAnalyzer, DefaultVerifier>
@@ -144,6 +249,12 @@ public class Program
                 TestCode = source,
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net60,
             };
+
+            // C# 9.0の言語バージョンを設定
+            test.TestState.AnalyzerConfigFiles.Add(("/.editorconfig", @"
+is_global = true
+build_property.LangVersion = 9.0
+"));
 
             // Analyzerプロジェクト自体を参照に追加（属性を使用するため）
             test.TestState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);
