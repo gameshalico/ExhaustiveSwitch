@@ -33,4 +33,28 @@
       </Compile>
     </ItemGroup>
 
+    <Target Name="CopyToUnity" AfterTargets="Build">
+        <PropertyGroup>
+            <UnityAnalyzerPath>$(ProjectDir)..\..\ExhaustiveSwitch\Assets\ExhaustiveSwitch\Analyzer</UnityAnalyzerPath>
+        </PropertyGroup>
+
+        <!-- メインDLLのコピー -->
+        <ItemGroup>
+            <MainDll Include="$(OutputPath)$(AssemblyName).dll" />
+            <JaResourcesDll Include="$(OutputPath)ja\$(AssemblyName).resources.dll" />
+        </ItemGroup>
+
+        <Copy SourceFiles="@(MainDll)"
+              DestinationFolder="$(UnityAnalyzerPath)"
+              SkipUnchangedFiles="true" />
+
+        <!-- 日本語リソースのコピー -->
+        <Copy SourceFiles="@(JaResourcesDll)"
+              DestinationFolder="$(UnityAnalyzerPath)\ja"
+              SkipUnchangedFiles="true"
+              Condition="Exists('$(OutputPath)ja\$(AssemblyName).resources.dll')" />
+
+        <Message Text="Copied $(AssemblyName).dll to Unity Analyzer folder" Importance="high" />
+    </Target>
+
 </Project>
