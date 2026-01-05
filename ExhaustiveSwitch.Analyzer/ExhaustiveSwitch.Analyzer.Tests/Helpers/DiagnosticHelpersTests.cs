@@ -8,7 +8,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Helpers
     public class DiagnosticHelpersTests
     {
         /// <summary>
-        /// 診断のプロパティから不足している型のメタデータ名を取得
+        /// Get metadata name of missing type from diagnostic properties
         /// </summary>
         [Fact]
         public void GetMissingTypeFromDiagnostic_WithMetadata_ReturnsTypeSymbol()
@@ -26,7 +26,7 @@ public class MyClass { }
         }
 
         /// <summary>
-        /// メタデータがない場合、nullを返す
+        /// When no metadata, returns null
         /// </summary>
         [Fact]
         public void GetMissingTypeFromDiagnostic_WithoutMetadata_ReturnsNull()
@@ -43,7 +43,7 @@ public class MyClass { }
         }
 
         /// <summary>
-        /// メタデータ名が空の場合、nullを返す
+        /// When metadata name is empty, returns null
         /// </summary>
         [Fact]
         public void GetMissingTypeFromDiagnostic_EmptyMetadata_ReturnsNull()
@@ -60,7 +60,7 @@ public class MyClass { }
         }
 
         /// <summary>
-        /// 存在しない型のメタデータ名の場合、nullを返す
+        /// When metadata name for non-existent type, returns null
         /// </summary>
         [Fact]
         public void GetMissingTypeFromDiagnostic_NonExistentType_ReturnsNull()
@@ -77,7 +77,7 @@ public class MyClass { }
         }
 
         /// <summary>
-        /// 診断から不足している型の表示名を取得
+        /// Get display name of missing type from diagnostic
         /// </summary>
         [Fact]
         public void GetMissingTypeNameFromDiagnostic_WithTypeName_ReturnsName()
@@ -90,7 +90,7 @@ public class MyClass { }
         }
 
         /// <summary>
-        /// 型名がない場合、nullを返す
+        /// When no type name, returns null
         /// </summary>
         [Fact]
         public void GetMissingTypeNameFromDiagnostic_WithoutTypeName_ReturnsNull()
@@ -103,7 +103,7 @@ public class MyClass { }
         }
 
         /// <summary>
-        /// プロパティが空の診断の場合、nullを返す
+        /// When diagnostic with empty properties, returns null
         /// </summary>
         [Fact]
         public void GetMissingTypeNameFromDiagnostic_EmptyProperties_ReturnsNull()

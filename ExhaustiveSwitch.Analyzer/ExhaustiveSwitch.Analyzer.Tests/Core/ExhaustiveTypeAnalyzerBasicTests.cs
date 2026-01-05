@@ -7,12 +7,12 @@ using Xunit;
 namespace ExhaustiveSwitch.Analyzer.Tests.Core
 {
     /// <summary>
-    /// 基本的なswitch文/式の網羅性チェックのテスト
+    /// Tests for basic switch statement/expression exhaustiveness checking
     /// </summary>
     public class ExhaustiveTypeAnalyzerBasicTests
     {
         /// <summary>
-        /// すべてのケースが処理されている場合、エラーなし
+        /// When all cases are handled, no diagnostic
         /// </summary>
         [Fact]
         public async Task WhenAllCasesAreHandled_NoDiagnostic()
@@ -47,7 +47,7 @@ public class Program
         }
 
         /// <summary>
-        /// 一部のケースが処理されていない場合、エラー
+        /// When some cases are missing, diagnostic
         /// </summary>
         [Fact]
         public async Task WhenMissingCase_Diagnostic()
@@ -84,7 +84,7 @@ public class Program
         }
 
         /// <summary>
-        /// defaultがあってもケースが不足している場合、エラー
+        /// When missing case even with default, diagnostic
         /// </summary>
         [Fact]
         public async Task WhenMissingCaseWithDefault_Diagnostic()
@@ -123,7 +123,7 @@ public class Program
         }
 
         /// <summary>
-        /// switch式ですべてのケースが処理されている場合、エラーなし
+        /// When all cases are handled in switch expression, no diagnostic
         /// </summary>
         [Fact]
         public async Task WhenAllCasesAreHandledInSwitchExpression_NoDiagnostic()
@@ -156,7 +156,7 @@ public class Program
         }
 
         /// <summary>
-        /// switch式で一部のケースが処理されていない場合、エラー
+        /// When missing case in switch expression, diagnostic
         /// </summary>
         [Fact]
         public async Task WhenMissingCaseInSwitchExpression_Diagnostic()
@@ -193,7 +193,7 @@ public class Program
         }
 
         /// <summary>
-        /// 抽象クラスでの網羅性チェック
+        /// Exhaustiveness check with abstract class
         /// </summary>
         [Fact]
         public async Task WhenUsingAbstractClass_Diagnostic()
@@ -230,7 +230,7 @@ public class Program
         }
 
         /// <summary>
-        /// Case属性がない型は検証対象外
+        /// Types without Case attribute are not validated
         /// </summary>
         [Fact]
         public async Task WhenTypeHasNoCaseAttribute_NoDiagnostic()
@@ -244,7 +244,7 @@ public interface IEnemy { }
 [Case]
 public sealed class Goblin : IEnemy { }
 
-// Case属性なし
+// No Case attribute
 public sealed class Orc : IEnemy { }
 
 public class Program
@@ -263,7 +263,7 @@ public class Program
         }
 
         /// <summary>
-        /// 複数の不足ケースがある場合、すべて報告
+        /// When multiple cases missing, reports all
         /// </summary>
         [Fact]
         public async Task WhenMultipleCasesMissing_ReportsAll()
@@ -295,7 +295,7 @@ public class Program
     }
 }";
 
-            // 複数不足している場合、すべて報告される
+            // When multiple missing, all are reported
             var expected1 = new DiagnosticResult("EXH0001", DiagnosticSeverity.Error)
                 .WithLocation(0)
                 .WithArguments("IEnemy", "Orc");
@@ -308,7 +308,7 @@ public class Program
         }
 
         /// <summary>
-        /// 空のswitchはすべてのケースが不足
+        /// Empty switch is missing all cases
         /// </summary>
         [Fact]
         public async Task WhenEmptySwitch_Diagnostic()
@@ -347,7 +347,7 @@ public class Program
         }
 
         /// <summary>
-        /// [Case]属性があるが[Exhaustive]型を継承/実装していない場合、警告
+        /// When Case attribute without Exhaustive base, warning
         /// </summary>
         [Fact]
         public async Task WhenCaseWithoutExhaustiveBase_Warning()
@@ -366,7 +366,7 @@ public sealed class {|#0:OrphanClass|} { }";
         }
 
         /// <summary>
-        /// [Case]属性があり[Exhaustive]型を継承している場合、警告なし
+        /// When Case attribute with Exhaustive base, no warning
         /// </summary>
         [Fact]
         public async Task WhenCaseWithExhaustiveBase_NoWarning()
@@ -384,7 +384,7 @@ public sealed class Goblin : IEnemy { }";
         }
 
         /// <summary>
-        /// 複数の[Case]型があり、一部のみ[Exhaustive]型を継承していない場合、該当する型のみ警告
+        /// When multiple Cases with mixed Exhaustive bases, warning for orphan only
         /// </summary>
         [Fact]
         public async Task WhenMultipleCasesWithMixedExhaustiveBases_WarningForOrphanOnly()
@@ -409,7 +409,7 @@ public sealed class {|#0:OrphanClass|} { }";
         }
 
         /// <summary>
-        /// Exhaustive属性のないインターフェースはswitchのチェックはされないが、[Case]型には警告が出る
+        /// Interface without Exhaustive attribute does not check switch, but Case types get warning
         /// </summary>
         [Fact]
         public async Task WhenNoExhaustiveAttribute_CaseWarningOnly()
@@ -437,7 +437,7 @@ public class Program
     }
 }";
 
-            // switchのEXH0001は出ないが、[Case]型に対するEXH0002は出る
+            // No EXH0001 for switch, but EXH0002 for Case types
             var expected1 = new DiagnosticResult("EXH0002", DiagnosticSeverity.Warning)
                 .WithLocation(0)
                 .WithArguments("Goblin");
@@ -457,7 +457,7 @@ public class Program
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net60,
             };
 
-            // Analyzerプロジェクト自体を参照に追加（属性を使用するため）
+            // Add Analyzer project itself as reference (to use attributes)
             test.TestState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);
 
             test.ExpectedDiagnostics.AddRange(expected);

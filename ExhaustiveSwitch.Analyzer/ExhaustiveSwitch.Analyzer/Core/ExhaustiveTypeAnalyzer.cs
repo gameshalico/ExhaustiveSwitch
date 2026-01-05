@@ -91,15 +91,15 @@ namespace ExhaustiveSwitch.Analyzer
         }
         
         /// <summary>
-        /// コンパイル単位内の全型をスキャンし、[Exhaustive]な親と[Case]な子の関係マップを構築する
+        /// Scans all types in the compilation unit and builds a relationship map between [Exhaustive] parents and [Case] children.
         /// </summary>
         private ConcurrentDictionary<INamedTypeSymbol, ExhaustiveHierarchyInfo> BuildInheritanceMap(
             Compilation compilation,
             INamedTypeSymbol exhaustiveAttributeType,
             INamedTypeSymbol caseAttributeType)
         {
-            // Key: [Exhaustive]な親クラス/インターフェース
-            // Value: それを継承/実装している [Case] 属性付きの子クラス一覧
+            // Key: [Exhaustive] parent class/interface
+            // Value: List of child classes with [Case] attribute that inherit/implement it
             var map = new Dictionary<INamedTypeSymbol, HashSet<INamedTypeSymbol>>(SymbolEqualityComparer.Default);
 
             void ProcessType(INamedTypeSymbol typeSymbol)
@@ -110,7 +110,7 @@ namespace ExhaustiveSwitch.Analyzer
 
                     foreach (var exhaustiveBase in exhaustiveBases)
                     {
-                        // ジェネリック型の場合は型定義（OriginalDefinition）をキーとして使用
+                        // For generic types, use the type definition (OriginalDefinition) as the key
                         var exhaustiveBaseKey = exhaustiveBase.IsGenericType ? exhaustiveBase.OriginalDefinition : exhaustiveBase;
 
                         if (!map.TryGetValue(exhaustiveBaseKey, out var children))
@@ -119,13 +119,13 @@ namespace ExhaustiveSwitch.Analyzer
                             map[exhaustiveBaseKey] = children;
                         }
 
-                        // Case型もジェネリックの場合は型定義を格納
+                        // For Case types that are generic, store the type definition
                         var typeToAdd = typeSymbol.IsGenericType ? typeSymbol.OriginalDefinition : typeSymbol;
                         children.Add(typeToAdd);
                     }
                 }
 
-                // ネストされた型の再帰スキャン
+                // Recursive scan of nested types
                 var nestedTypes = typeSymbol.GetTypeMembers();
                 if (nestedTypes.IsEmpty)
                 {
@@ -151,17 +151,17 @@ namespace ExhaustiveSwitch.Analyzer
                 }
             }
 
-            // 現在のプロジェクトのソースコードをスキャン
+            // Scan the source code of the current project
             ProcessNamespace(compilation.GlobalNamespace);
 
-            // 参照アセンブリをスキャン
+            // Scan referenced assemblies
             var definitionAssembly = exhaustiveAttributeType.ContainingAssembly;
 
             foreach (var reference in compilation.References)
             {
                 if (compilation.GetAssemblyOrModuleSymbol(reference) is IAssemblySymbol assembly)
                 {
-                    // [Exhaustive]属性が定義されているアセンブリを参照していないアセンブリはスキャンをスキップ
+                    // Skip assemblies that don't reference the assembly where [Exhaustive] attribute is defined
                     if (!ReferencesAssembly(assembly, definitionAssembly))
                     {
                         continue;
@@ -222,23 +222,23 @@ namespace ExhaustiveSwitch.Analyzer
                 return;
             }
 
-            // [Exhaustive]属性を持つ型を探す
+            // Find the type with [Exhaustive] attribute
             var exhaustiveType = TypeAnalysisHelpers.FindExhaustiveBaseType(switchedType, exhaustiveAttributeType);
             if (exhaustiveType == null)
             {
                 return;
             }
 
-            // ジェネリック型の場合、型定義（OriginalDefinition）でマップを検索
+            // For generic types, search the map using the type definition (OriginalDefinition)
             var exhaustiveTypeKey = exhaustiveType.IsGenericType ? exhaustiveType.OriginalDefinition : exhaustiveType;
 
-            // S_expected: [Exhaustive]な型に対応するすべての[Case]型を取得
+            // S_expected: Get all [Case] types corresponding to the [Exhaustive] type
             if (hierarchyInfoMap.TryGetValue(exhaustiveTypeKey, out var hierarchyInfo) == false)
             {
                 return;
             }
 
-            // ジェネリック型の場合、型引数を適用
+            // For generic types, apply type arguments
             if (hierarchyInfo.IsGeneric && exhaustiveType.IsGenericType)
             {
                 hierarchyInfo = hierarchyInfo.ApplyTypeArguments(exhaustiveType);
@@ -253,10 +253,10 @@ namespace ExhaustiveSwitch.Analyzer
                 return;
             }
 
-            // 不足している型のうち、報告すべき型をフィルタリング
+            // Filter the types to report among missing types
             var casesToReport = FilterAncestorsWithUnhandledDescendants(missingCases, hierarchyInfo);
 
-            // すべての欠けている型の情報を準備（最初の診断で使用）
+            // Prepare information about all missing types (used in the first diagnostic)
             var allMissingTypesNames = string.Join(";", casesToReport.Select(t => t.ToDisplayString(SimpleTypeNameFormat)));
             var allMissingTypesMetadata = string.Join(";", casesToReport.Select(MetadataHelpers.GetFullMetadataName));
 
@@ -267,7 +267,7 @@ namespace ExhaustiveSwitch.Analyzer
                 properties.Add("MissingType", missingCase.ToDisplayString(SimpleTypeNameFormat));
                 properties.Add("MissingTypeMetadata", MetadataHelpers.GetFullMetadataName(missingCase));
 
-                // 最初の診断の場合のみ、すべての欠けている型の情報を追加
+                // Add information about all missing types only for the first diagnostic
                 if (isFirst)
                 {
                     properties.Add("IsFirstDiagnostic", "true");
@@ -290,10 +290,10 @@ namespace ExhaustiveSwitch.Analyzer
             }
         }
         
-        
+
         /// <summary>
-        /// 不足している型のうち、報告すべき型をフィルタリング
-        /// 他の不足している型の祖先である型は除外（祖先型は、その子孫がすべて処理されればカバーされるため）
+        /// Filters types to report among missing types.
+        /// Excludes ancestor types of other missing types (since ancestor types are covered when all their descendants are handled).
         /// </summary>
         private static List<INamedTypeSymbol> FilterAncestorsWithUnhandledDescendants(
             HashSet<INamedTypeSymbol> missingCases,
@@ -305,14 +305,14 @@ namespace ExhaustiveSwitch.Analyzer
             {
                 if (hierarchyInfo.DirectChildrenMap.TryGetValue(missingCase, out var children))
                 {
-                    // 具象クラスの場合は子孫のチェックは不要
+                    // For concrete classes, no need to check descendants
                     if (missingCase.TypeKind == TypeKind.Class && !missingCase.IsAbstract)
                     {
                         casesToReport.Add(missingCase);
                         continue;
                     }
-                    
-                    // 不足している子孫がいるか
+
+                    // Check if there are any missing children
                     bool hasMissingChild = false;
                     foreach (var child in children)
                     {
@@ -353,14 +353,14 @@ namespace ExhaustiveSwitch.Analyzer
                     continue;
                 }
 
-                // パターンの型が[Case]型である場合、直接追加
+                // If the pattern type is a [Case] type, add it directly
                 if (hierarchyInfo.AllCases.Contains(typeSymbol))
                 {
                     explicitlyHandled.Add(typeSymbol);
                 }
                 else
                 {
-                    // パターンの型が[Case]型でない場合、その型を実装/継承している[Case]型をすべて追加
+                    // If the pattern type is not a [Case] type, add all [Case] types that implement/inherit from it
                     foreach (var caseType in hierarchyInfo.AllCases)
                     {
                         if (TypeAnalysisHelpers.IsImplementingOrDerivedFrom(caseType, typeSymbol))
@@ -373,7 +373,7 @@ namespace ExhaustiveSwitch.Analyzer
 
             var finalHandledCases = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
 
-            // メモ化用辞書 (true: カバー済み, false: 未カバー)
+            // Memoization dictionary (true: covered, false: not covered)
             var memo = new Dictionary<INamedTypeSymbol, bool>(SymbolEqualityComparer.Default);
 
             foreach (var candidate in hierarchyInfo.AllCases)
@@ -386,9 +386,9 @@ namespace ExhaustiveSwitch.Analyzer
 
             return finalHandledCases;
         }
-        
+
         /// <summary>
-        /// 再帰的にカバレッジを判定（メモ化付き）
+        /// Recursively determines coverage (with memoization).
         /// </summary>
         private bool CheckCoverageRecursive(
             INamedTypeSymbol type,
@@ -401,7 +401,7 @@ namespace ExhaustiveSwitch.Analyzer
                 return cachedResult;
             }
 
-            // 循環参照防止のため一旦falseを設定（DAGなら循環しないが念のため）
+            // Set to false temporarily to prevent circular references (should not occur in a DAG, but just in case)
             memo[type] = false;
 
             if (explicitlyHandled.Contains(type))
@@ -410,14 +410,14 @@ namespace ExhaustiveSwitch.Analyzer
                 return true;
             }
 
-            // 親のいずれかが明示的に処理されている場合、自身もカバー済みとみなす
+            // If any ancestor is explicitly handled, consider this type as covered
             if (IsAnyAncestorExplicitlyHandled(type, explicitlyHandled, hierarchyInfo))
             {
                 memo[type] = true;
                 return true;
             }
 
-            // abstract/sealed/interfaceのみ子クラスのカバレッジで親をカバー可能
+            // Only abstract/sealed/interface types can be covered by child class coverage
             if (hierarchyInfo.DirectChildrenMap.TryGetValue(type, out var children) && children.Count > 0)
             {
                 bool canBeCoveredByChildren = type.IsAbstract || type.IsSealed || type.TypeKind == TypeKind.Interface;
@@ -444,9 +444,9 @@ namespace ExhaustiveSwitch.Analyzer
 
             return false;
         }
-        
+
         /// <summary>
-        /// 祖先を辿って「明示的にハンドルされているか」を確認
+        /// Checks if any ancestor is explicitly handled by traversing up the hierarchy.
         /// </summary>
         private bool IsAnyAncestorExplicitlyHandled(
             INamedTypeSymbol type,
@@ -496,7 +496,7 @@ namespace ExhaustiveSwitch.Analyzer
                 return true;
             }
 
-            // 直接参照のみをチェック
+            // Check only direct references
             var targetName = targetAssembly.Identity.Name;
             foreach (var module in assembly.Modules)
             {
@@ -513,7 +513,7 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// 型シンボルが[Case]属性を持つが[Exhaustive]型を継承/実装していない場合に警告を出す
+        /// Reports a warning if a type symbol has the [Case] attribute but does not inherit/implement an [Exhaustive] type.
         /// </summary>
         private void AnalyzeTypeSymbol(
             SymbolAnalysisContext context,
@@ -522,17 +522,17 @@ namespace ExhaustiveSwitch.Analyzer
         {
             var typeSymbol = (INamedTypeSymbol)context.Symbol;
 
-            // [Case]属性を持つかチェック
+            // Check if it has [Case] attribute
             if (!TypeAnalysisHelpers.HasAttribute(typeSymbol, caseAttributeType))
             {
                 return;
             }
 
-            // 上位に[Exhaustive]型があるかチェック
+            // Check if there is an [Exhaustive] type in the hierarchy
             var exhaustiveBases = TypeAnalysisHelpers.FindAllExhaustiveTypes(typeSymbol, exhaustiveAttributeType);
             if (exhaustiveBases.Count == 0)
             {
-                // [Case]属性があるが、[Exhaustive]型が見つからない場合は警告
+                // Report a warning if [Case] attribute exists but no [Exhaustive] type is found
                 var diagnostic = Diagnostic.Create(
                     OrphanCaseRule,
                     typeSymbol.Locations.FirstOrDefault(),

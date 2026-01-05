@@ -8,7 +8,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Helpers
     public class TypeAnalysisHelpersTests
     {
         /// <summary>
-        /// 属性を持つシンボルを正しく検出
+        /// Correctly detect symbol with attribute
         /// </summary>
         [Fact]
         public void HasAttribute_WithAttribute_ReturnsTrue()
@@ -29,7 +29,7 @@ public class MyClass { }
         }
 
         /// <summary>
-        /// 属性を持たないシンボルはfalseを返す
+        /// Symbol without attribute returns false
         /// </summary>
         [Fact]
         public void HasAttribute_WithoutAttribute_ReturnsFalse()
@@ -47,7 +47,7 @@ public class MyClass { }
         }
 
         /// <summary>
-        /// インターフェースの実装を正しく検出
+        /// Correctly detect interface implementation
         /// </summary>
         [Fact]
         public void IsImplementingOrDerivedFrom_Interface_ReturnsTrue()
@@ -67,7 +67,7 @@ public class Derived : IBase { }
         }
 
         /// <summary>
-        /// 基底クラスの継承を正しく検出
+        /// Correctly detect base class inheritance
         /// </summary>
         [Fact]
         public void IsImplementingOrDerivedFrom_BaseClass_ReturnsTrue()
@@ -87,7 +87,7 @@ public class Derived : Base { }
         }
 
         /// <summary>
-        /// 継承関係がない場合、falseを返す
+        /// When no inheritance relationship, returns false
         /// </summary>
         [Fact]
         public void IsImplementingOrDerivedFrom_Unrelated_ReturnsFalse()
@@ -107,7 +107,7 @@ public class Unrelated { }
         }
 
         /// <summary>
-        /// 同じ型の場合、trueを返す
+        /// When same type, returns true
         /// </summary>
         [Fact]
         public void IsImplementingOrDerivedFrom_SameType_ReturnsTrue()

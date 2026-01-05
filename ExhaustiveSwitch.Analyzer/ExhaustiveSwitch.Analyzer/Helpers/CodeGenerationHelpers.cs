@@ -6,11 +6,11 @@ namespace ExhaustiveSwitch.Analyzer
     internal static class CodeGenerationHelpers
     {
         /// <summary>
-        /// 型名からcamelCase形式の変数名を生成します。
-        /// C#のキーワードと衝突する場合は@プレフィックスを付けます。
+        /// Generates a camelCase variable name from a type name.
+        /// Adds @ prefix if the name conflicts with C# keywords.
         /// </summary>
-        /// <param name="type">変数名を生成する型</param>
-        /// <returns>生成された変数名（例: "Goblin" → "goblin", "String" → "@string"）</returns>
+        /// <param name="type">The type to generate a variable name for</param>
+        /// <returns>The generated variable name (e.g., "Goblin" → "goblin", "String" → "@string")</returns>
         public static string GetVariableName(INamedTypeSymbol type)
         {
             if (type == null)
@@ -31,7 +31,7 @@ namespace ExhaustiveSwitch.Analyzer
 
             var result = char.ToLower(name[0]) + name.Substring(1);
 
-            // C#キーワードとの衝突を回避
+            // Avoid collision with C# keywords
             if (SyntaxFacts.GetKeywordKind(result) != SyntaxKind.None)
             {
                 result = "@" + result;

@@ -9,7 +9,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Core
     public class ExhaustiveHierarchyInfoTests
     {
         /// <summary>
-        /// 単純な継承関係の場合、親子関係が正しく構築される
+        /// For simple inheritance, parent-child relationship is correctly built
         /// </summary>
         [Fact]
         public void SimpleInheritance_BuildsCorrectHierarchy()
@@ -28,27 +28,27 @@ public class Derived : Base { }
 
             var hierarchyInfo = new ExhaustiveHierarchyInfo(allCases);
 
-            // AllCasesには両方が含まれる
+            // Both are included in AllCases
             Assert.Equal(2, hierarchyInfo.AllCases.Count);
             Assert.Contains(baseType, hierarchyInfo.AllCases);
             Assert.Contains(derivedType, hierarchyInfo.AllCases);
 
-            // Derivedの親はBase
+            // Derived's parent is Base
             Assert.True(hierarchyInfo.DirectParentsMap.ContainsKey(derivedType));
             Assert.Single(hierarchyInfo.DirectParentsMap[derivedType]);
             Assert.Contains(baseType, hierarchyInfo.DirectParentsMap[derivedType]);
 
-            // Baseの子はDerived
+            // Base's child is Derived
             Assert.True(hierarchyInfo.DirectChildrenMap.ContainsKey(baseType));
             Assert.Single(hierarchyInfo.DirectChildrenMap[baseType]);
             Assert.Contains(derivedType, hierarchyInfo.DirectChildrenMap[baseType]);
 
-            // Baseには親がいない
+            // Base has no parent
             Assert.False(hierarchyInfo.DirectParentsMap.ContainsKey(baseType));
         }
 
         /// <summary>
-        /// インターフェースの実装関係が正しく構築される
+        /// Interface implementation relationship is correctly built
         /// </summary>
         [Fact]
         public void InterfaceImplementation_BuildsCorrectHierarchy()
@@ -67,19 +67,19 @@ public class Derived : IBase { }
 
             var hierarchyInfo = new ExhaustiveHierarchyInfo(allCases);
 
-            // Derivedの親はIBase
+            // Derived's parent is IBase
             Assert.True(hierarchyInfo.DirectParentsMap.ContainsKey(derivedType));
             Assert.Single(hierarchyInfo.DirectParentsMap[derivedType]);
             Assert.Contains(baseType, hierarchyInfo.DirectParentsMap[derivedType]);
 
-            // IBaseの子はDerived
+            // IBase's child is Derived
             Assert.True(hierarchyInfo.DirectChildrenMap.ContainsKey(baseType));
             Assert.Single(hierarchyInfo.DirectChildrenMap[baseType]);
             Assert.Contains(derivedType, hierarchyInfo.DirectChildrenMap[baseType]);
         }
 
         /// <summary>
-        /// 多重継承（インターフェース）の場合、複数の親が記録される
+        /// For multiple inheritance (interfaces), multiple parents are recorded
         /// </summary>
         [Fact]
         public void MultipleInterfaces_RecordsAllParents()
@@ -100,23 +100,23 @@ public class Derived : IBase1, IBase2 { }
 
             var hierarchyInfo = new ExhaustiveHierarchyInfo(allCases);
 
-            // Derivedの親はIBase1とIBase2の両方
+            // Derived's parents are both IBase1 and IBase2
             Assert.True(hierarchyInfo.DirectParentsMap.ContainsKey(derivedType));
             Assert.Equal(2, hierarchyInfo.DirectParentsMap[derivedType].Count);
             Assert.Contains(base1Type, hierarchyInfo.DirectParentsMap[derivedType]);
             Assert.Contains(base2Type, hierarchyInfo.DirectParentsMap[derivedType]);
 
-            // IBase1の子はDerived
+            // IBase1's child is Derived
             Assert.True(hierarchyInfo.DirectChildrenMap.ContainsKey(base1Type));
             Assert.Contains(derivedType, hierarchyInfo.DirectChildrenMap[base1Type]);
 
-            // IBase2の子はDerived
+            // IBase2's child is Derived
             Assert.True(hierarchyInfo.DirectChildrenMap.ContainsKey(base2Type));
             Assert.Contains(derivedType, hierarchyInfo.DirectChildrenMap[base2Type]);
         }
 
         /// <summary>
-        /// 中間クラス（AllCasesに含まれない）を跨いで、最も近い親を見つける
+        /// Find closest parent across intermediate class (not included in AllCases)
         /// </summary>
         [Fact]
         public void IntermediateClass_FindsClosestParentInAllCases()
@@ -130,26 +130,26 @@ public class Child : Parent { }
             var grandParentType = compilation.GetTypeByMetadataName("GrandParent")!;
             var childType = compilation.GetTypeByMetadataName("Child")!;
 
-            // ParentはAllCasesに含めない
+            // Don't include Parent in AllCases
             var allCases = new HashSet<INamedTypeSymbol>(
                 new[] { grandParentType, childType },
                 SymbolEqualityComparer.Default);
 
             var hierarchyInfo = new ExhaustiveHierarchyInfo(allCases);
 
-            // Childの親はGrandParent（Parentをスキップ）
+            // Child's parent is GrandParent (skipping Parent)
             Assert.True(hierarchyInfo.DirectParentsMap.ContainsKey(childType));
             Assert.Single(hierarchyInfo.DirectParentsMap[childType]);
             Assert.Contains(grandParentType, hierarchyInfo.DirectParentsMap[childType]);
 
-            // GrandParentの子はChild
+            // GrandParent's child is Child
             Assert.True(hierarchyInfo.DirectChildrenMap.ContainsKey(grandParentType));
             Assert.Single(hierarchyInfo.DirectChildrenMap[grandParentType]);
             Assert.Contains(childType, hierarchyInfo.DirectChildrenMap[grandParentType]);
         }
 
         /// <summary>
-        /// ダイヤモンド継承の場合、重複なく親を記録
+        /// For diamond inheritance, record parents without duplication
         /// </summary>
         [Fact]
         public void DiamondInheritance_AvoidsDuplicates()
@@ -172,26 +172,26 @@ public class Derived : ILeft, IRight { }
 
             var hierarchyInfo = new ExhaustiveHierarchyInfo(allCases);
 
-            // Derivedの親はILeftとIRightのみ（IBaseは間接的）
+            // Derived's parents are only ILeft and IRight (IBase is indirect)
             Assert.True(hierarchyInfo.DirectParentsMap.ContainsKey(derivedType));
             Assert.Equal(2, hierarchyInfo.DirectParentsMap[derivedType].Count);
             Assert.Contains(leftType, hierarchyInfo.DirectParentsMap[derivedType]);
             Assert.Contains(rightType, hierarchyInfo.DirectParentsMap[derivedType]);
             Assert.DoesNotContain(baseType, hierarchyInfo.DirectParentsMap[derivedType]);
 
-            // ILeftの親はIBase
+            // ILeft's parent is IBase
             Assert.True(hierarchyInfo.DirectParentsMap.ContainsKey(leftType));
             Assert.Single(hierarchyInfo.DirectParentsMap[leftType]);
             Assert.Contains(baseType, hierarchyInfo.DirectParentsMap[leftType]);
 
-            // IRightの親はIBase
+            // IRight's parent is IBase
             Assert.True(hierarchyInfo.DirectParentsMap.ContainsKey(rightType));
             Assert.Single(hierarchyInfo.DirectParentsMap[rightType]);
             Assert.Contains(baseType, hierarchyInfo.DirectParentsMap[rightType]);
         }
 
         /// <summary>
-        /// 空のAllCasesの場合、空のマップが構築される
+        /// For empty AllCases, empty maps are built
         /// </summary>
         [Fact]
         public void EmptyAllCases_BuildsEmptyMaps()
@@ -206,7 +206,7 @@ public class Derived : ILeft, IRight { }
         }
 
         /// <summary>
-        /// 単一の型（親がいない）の場合
+        /// For single type (with no parent)
         /// </summary>
         [Fact]
         public void SingleTypeWithNoParent_BuildsCorrectHierarchy()
@@ -230,7 +230,7 @@ public class Standalone { }
         }
 
         /// <summary>
-        /// 複雑な階層構造のテスト
+        /// Test for complex hierarchy structure
         /// </summary>
         [Fact]
         public void ComplexHierarchy_BuildsCorrectStructure()
@@ -255,31 +255,31 @@ public class Bird : Animal { }
 
             var hierarchyInfo = new ExhaustiveHierarchyInfo(allCases);
 
-            // Animalの子はMammalとBird
+            // Animal's children are Mammal and Bird
             Assert.True(hierarchyInfo.DirectChildrenMap.ContainsKey(animalType));
             Assert.Equal(2, hierarchyInfo.DirectChildrenMap[animalType].Count);
             Assert.Contains(mammalType, hierarchyInfo.DirectChildrenMap[animalType]);
             Assert.Contains(birdType, hierarchyInfo.DirectChildrenMap[animalType]);
 
-            // Mammalの子はDogとCat
+            // Mammal's children are Dog and Cat
             Assert.True(hierarchyInfo.DirectChildrenMap.ContainsKey(mammalType));
             Assert.Equal(2, hierarchyInfo.DirectChildrenMap[mammalType].Count);
             Assert.Contains(dogType, hierarchyInfo.DirectChildrenMap[mammalType]);
             Assert.Contains(catType, hierarchyInfo.DirectChildrenMap[mammalType]);
 
-            // Dogの親はMammal
+            // Dog's parent is Mammal
             Assert.True(hierarchyInfo.DirectParentsMap.ContainsKey(dogType));
             Assert.Single(hierarchyInfo.DirectParentsMap[dogType]);
             Assert.Contains(mammalType, hierarchyInfo.DirectParentsMap[dogType]);
 
-            // Mammalの親はAnimal
+            // Mammal's parent is Animal
             Assert.True(hierarchyInfo.DirectParentsMap.ContainsKey(mammalType));
             Assert.Single(hierarchyInfo.DirectParentsMap[mammalType]);
             Assert.Contains(animalType, hierarchyInfo.DirectParentsMap[mammalType]);
         }
 
         /// <summary>
-        /// 中間インターフェースをスキップする複雑なケース
+        /// Complex case skipping intermediate interfaces
         /// </summary>
         [Fact]
         public void SkipIntermediateInterfaces_FindsCorrectParents()
@@ -295,24 +295,24 @@ public class Concrete : ILeaf { }
             var leafType = compilation.GetTypeByMetadataName("ILeaf")!;
             var concreteType = compilation.GetTypeByMetadataName("Concrete")!;
 
-            // IMiddleはAllCasesに含めない
+            // Don't include IMiddle in AllCases
             var allCases = new HashSet<INamedTypeSymbol>(
                 new[] { rootType, leafType, concreteType },
                 SymbolEqualityComparer.Default);
 
             var hierarchyInfo = new ExhaustiveHierarchyInfo(allCases);
 
-            // Concreteの親はILeaf（最も近い）
+            // Concrete's parent is ILeaf (closest)
             Assert.True(hierarchyInfo.DirectParentsMap.ContainsKey(concreteType));
             Assert.Single(hierarchyInfo.DirectParentsMap[concreteType]);
             Assert.Contains(leafType, hierarchyInfo.DirectParentsMap[concreteType]);
 
-            // ILeafの親はIRoot（IMiddleをスキップ）
+            // ILeaf's parent is IRoot (skipping IMiddle)
             Assert.True(hierarchyInfo.DirectParentsMap.ContainsKey(leafType));
             Assert.Single(hierarchyInfo.DirectParentsMap[leafType]);
             Assert.Contains(rootType, hierarchyInfo.DirectParentsMap[leafType]);
 
-            // IRootには子が2つ（ILeafとConcrete経由）
+            // IRoot has one child (ILeaf via Concrete)
             Assert.True(hierarchyInfo.DirectChildrenMap.ContainsKey(rootType));
             Assert.Single(hierarchyInfo.DirectChildrenMap[rootType]);
             Assert.Contains(leafType, hierarchyInfo.DirectChildrenMap[rootType]);

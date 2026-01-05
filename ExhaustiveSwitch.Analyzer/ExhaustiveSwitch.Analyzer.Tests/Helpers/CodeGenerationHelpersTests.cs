@@ -7,7 +7,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Helpers
     public class CodeGenerationHelpersTests
     {
         /// <summary>
-        /// 通常の型名から変数名を生成
+        /// Generate variable name from normal type name
         /// </summary>
         [Fact]
         public void GetVariableName_NormalType_ReturnsLowerCamelCase()
@@ -20,7 +20,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Helpers
         }
 
         /// <summary>
-        /// 1文字の型名から変数名を生成
+        /// Generate variable name from single character type name
         /// </summary>
         [Fact]
         public void GetVariableName_SingleCharacter_ReturnsLowerCase()
@@ -33,7 +33,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Helpers
         }
 
         /// <summary>
-        /// 予約語と同じ型名の場合、@をつける
+        /// For type name same as keyword, add @
         /// </summary>
         [Fact]
         public void GetVariableName_Keyword_ReturnsWithAt()
@@ -46,7 +46,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Helpers
         }
 
         /// <summary>
-        /// 予約語と同じ型名の場合（string）、@をつける
+        /// For type name same as keyword (string), add @
         /// </summary>
         [Fact]
         public void GetVariableName_String_ReturnsWithAt()
@@ -59,7 +59,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Helpers
         }
 
         /// <summary>
-        /// 小文字で始まる型名の場合、そのまま返す
+        /// For type name starting with lowercase, return as is
         /// </summary>
         [Fact]
         public void GetVariableName_LowerCaseStart_ReturnsSame()
@@ -72,7 +72,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Helpers
         }
 
         /// <summary>
-        /// 大文字が続く型名の場合、最初だけ小文字化
+        /// For type name with consecutive capitals, lowercase only first
         /// </summary>
         [Fact]
         public void GetVariableName_AllCaps_ReturnsLowerFirst()
@@ -85,7 +85,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Helpers
         }
 
         /// <summary>
-        /// nullの型の場合、デフォルト値を返す
+        /// For null type, return default value
         /// </summary>
         [Fact]
         public void GetVariableName_NullType_ReturnsDefault()

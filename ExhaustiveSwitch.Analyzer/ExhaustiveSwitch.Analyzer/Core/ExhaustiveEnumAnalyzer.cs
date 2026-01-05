@@ -77,28 +77,28 @@ namespace ExhaustiveSwitch.Analyzer
                 return;
             }
 
-            // [Flags]属性がついている場合は無視
+            // Ignore if [Flags] attribute is present
             if (EnumAnalysisHelpers.HasFlagsAttribute(enumType, compilation))
             {
                 return;
             }
 
-            // [Exhaustive]属性をチェック
+            // Check for [Exhaustive] attribute
             if (!EnumAnalysisHelpers.HasAttribute(enumType, exhaustiveAttributeType))
             {
                 return;
             }
 
-            // すべてのenumメンバーを取得
+            // Get all enum members
             var allMembers = EnumAnalysisHelpers.GetAllEnumMembers(enumType);
 
-            // 処理されているメンバーを収集
+            // Collect handled members
             var handledMembers = EnumAnalysisHelpers.CollectHandledEnumMembers(
                 switchStatement.Sections.SelectMany(s => s.Labels).ToList(),
                 semanticModel,
                 enumType);
 
-            // 不足しているメンバーを検出
+            // Detect missing members
             var missingMembers = allMembers.Except(handledMembers);
 
             foreach (var missing in missingMembers)
@@ -134,28 +134,28 @@ namespace ExhaustiveSwitch.Analyzer
                 return;
             }
 
-            // [Flags]属性がついている場合は無視
+            // Ignore if [Flags] attribute is present
             if (EnumAnalysisHelpers.HasFlagsAttribute(enumType, compilation))
             {
                 return;
             }
 
-            // [Exhaustive]属性をチェック
+            // Check for [Exhaustive] attribute
             if (!EnumAnalysisHelpers.HasAttribute(enumType, exhaustiveAttributeType))
             {
                 return;
             }
 
-            // すべてのenumメンバーを取得
+            // Get all enum members
             var allMembers = EnumAnalysisHelpers.GetAllEnumMembers(enumType);
 
-            // 処理されているメンバーを収集
+            // Collect handled members
             var handledMembers = EnumAnalysisHelpers.CollectHandledEnumMembers(
                 switchExpression.Arms.Select(a => (SyntaxNode)a.Pattern).ToList(),
                 semanticModel,
                 enumType);
 
-            // 不足しているメンバーを検出
+            // Detect missing members
             var missingMembers = allMembers.Except(handledMembers);
 
             foreach (var missing in missingMembers)

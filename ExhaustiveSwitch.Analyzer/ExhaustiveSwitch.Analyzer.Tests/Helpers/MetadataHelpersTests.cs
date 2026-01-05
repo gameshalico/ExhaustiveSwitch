@@ -7,7 +7,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Helpers
     public class MetadataHelpersTests
     {
         /// <summary>
-        /// 単純な型の完全なメタデータ名を取得
+        /// Get full metadata name for simple type
         /// </summary>
         [Fact]
         public void GetFullMetadataName_SimpleType_ReturnsFullName()
@@ -26,7 +26,7 @@ namespace MyNamespace
         }
 
         /// <summary>
-        /// ネストされた型の完全なメタデータ名を取得
+        /// Get full metadata name for nested type
         /// </summary>
         [Fact]
         public void GetFullMetadataName_NestedType_ReturnsFullNameWithPlus()
@@ -48,7 +48,7 @@ namespace MyNamespace
         }
 
         /// <summary>
-        /// 名前空間がない型の完全なメタデータ名を取得
+        /// Get full metadata name for type without namespace
         /// </summary>
         [Fact]
         public void GetFullMetadataName_NoNamespace_ReturnsTypeName()
@@ -65,7 +65,7 @@ public class MyClass { }
         }
 
         /// <summary>
-        /// null型の場合は空文字列を返す
+        /// For null type, returns empty string
         /// </summary>
         [Fact]
         public void GetFullMetadataName_NullType_ReturnsEmpty()
@@ -76,7 +76,7 @@ public class MyClass { }
         }
 
         /// <summary>
-        /// 名前空間の完全な名前を取得
+        /// Get full name of namespace
         /// </summary>
         [Fact]
         public void GetNamespaceName_NestedNamespace_ReturnsFullName()
@@ -96,7 +96,7 @@ namespace Outer.Inner
         }
 
         /// <summary>
-        /// グローバル名前空間の場合は空文字列を返す
+        /// For global namespace, returns empty string
         /// </summary>
         [Fact]
         public void GetNamespaceName_GlobalNamespace_ReturnsEmpty()
@@ -114,7 +114,7 @@ public class MyClass { }
         }
 
         /// <summary>
-        /// nullの名前空間の場合は空文字列を返す
+        /// For null namespace, returns empty string
         /// </summary>
         [Fact]
         public void GetNamespaceName_Null_ReturnsEmpty()

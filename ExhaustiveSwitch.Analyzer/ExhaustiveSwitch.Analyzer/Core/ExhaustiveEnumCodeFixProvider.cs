@@ -24,7 +24,7 @@ namespace ExhaustiveSwitch.Analyzer
 
         public sealed override FixAllProvider GetFixAllProvider()
         {
-            // Fix Allは見づらい上、思想上使ってほしくないため、対応しない
+            // Fix All is not supported as it is difficult to use and discouraged by design
             return null;
         }
 
@@ -41,7 +41,7 @@ namespace ExhaustiveSwitch.Analyzer
 
             var node = root.FindNode(diagnosticSpan);
 
-            // switch文の場合
+            // For switch statement case
             var switchStatement = node.AncestorsAndSelf().OfType<SwitchStatementSyntax>().FirstOrDefault();
             if (switchStatement != null)
             {
@@ -56,7 +56,7 @@ namespace ExhaustiveSwitch.Analyzer
                     return;
                 }
 
-                // すべて追加のCodeFix
+                // CodeFix for adding all cases
                 if (missingMembers.Count > 1)
                 {
                     context.RegisterCodeFix(
@@ -68,7 +68,7 @@ namespace ExhaustiveSwitch.Analyzer
                         diagnostic);
                 }
 
-                // 個別追加のCodeFix
+                // CodeFix for adding individual cases
                 foreach (var member in missingMembers)
                 {
                     context.RegisterCodeFix(
@@ -82,7 +82,7 @@ namespace ExhaustiveSwitch.Analyzer
                 return;
             }
 
-            // switch式の場合
+            // For switch expression case
             var switchExpression = node.AncestorsAndSelf().OfType<SwitchExpressionSyntax>().FirstOrDefault();
             if (switchExpression != null)
             {
@@ -97,7 +97,7 @@ namespace ExhaustiveSwitch.Analyzer
                     return;
                 }
 
-                // すべて追加のCodeFix
+                // CodeFix for adding all cases
                 if (missingMembers.Count > 1)
                 {
                     context.RegisterCodeFix(
@@ -109,7 +109,7 @@ namespace ExhaustiveSwitch.Analyzer
                         diagnostic);
                 }
 
-                // 個別追加のCodeFix
+                // CodeFix for adding individual cases
                 foreach (var member in missingMembers)
                 {
                     context.RegisterCodeFix(
@@ -143,7 +143,7 @@ namespace ExhaustiveSwitch.Analyzer
                 return document;
             }
 
-            // enumの型シンボルを取得
+            // Get the enum type symbol
             var enumType = GetEnumTypeSymbol(semanticModel, enumTypeMetadata);
             if (enumType == null)
             {
@@ -155,7 +155,7 @@ namespace ExhaustiveSwitch.Analyzer
             var defaultIndex = defaultSection != null ? sections.IndexOf(defaultSection) : sections.Count;
 
             var newSections = sections;
-            // 逆順で挿入することで、リストの先頭から順に挿入される
+            // Insert in reverse order so items are inserted from the beginning of the list
             for (int i = missingMembers.Count - 1; i >= 0; i--)
             {
                 var member = missingMembers[i];
@@ -190,7 +190,7 @@ namespace ExhaustiveSwitch.Analyzer
                 return document;
             }
 
-            // enumの型シンボルを取得
+            // Get the enum type symbol
             var enumType = GetEnumTypeSymbol(semanticModel, enumTypeMetadata);
             if (enumType == null)
             {
@@ -202,7 +202,7 @@ namespace ExhaustiveSwitch.Analyzer
             var discardIndex = discardArm != null ? arms.IndexOf(discardArm) : arms.Count;
 
             var newArms = arms;
-            // 逆順で挿入することで、リストの先頭から順に挿入される
+            // Insert in reverse order so items are inserted from the beginning of the list
             for (int i = missingMembers.Count - 1; i >= 0; i--)
             {
                 var member = missingMembers[i];
@@ -285,7 +285,7 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// 診断情報から不足しているenumメンバー情報を抽出
+        /// Extracts missing enum member information from diagnostic data
         /// </summary>
         private static (List<string> missingMembers, string enumTypeName, string enumTypeMetadata) ExtractDiagnosticInfo(
             IEnumerable<Diagnostic> diagnostics)

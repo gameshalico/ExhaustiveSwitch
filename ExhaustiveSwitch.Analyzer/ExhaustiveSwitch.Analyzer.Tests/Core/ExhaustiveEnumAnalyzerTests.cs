@@ -7,12 +7,12 @@ using Xunit;
 namespace ExhaustiveSwitch.Analyzer.Tests.Core
 {
     /// <summary>
-    /// Exhaustive enum網羅性チェックのテスト
+    /// Tests for Exhaustive enum exhaustiveness checking
     /// </summary>
     public class ExhaustiveEnumAnalyzerTests
     {
         /// <summary>
-        /// すべてのenumメンバーが処理されている場合、エラーなし
+        /// When all enum members are handled, no diagnostic
         /// </summary>
         [Fact]
         public async Task WhenAllEnumMembersAreHandled_NoDiagnostic()
@@ -48,7 +48,7 @@ public class Program
         }
 
         /// <summary>
-        /// 一部のenumメンバーが処理されていない場合、エラー
+        /// When some enum members are missing, diagnostic
         /// </summary>
         [Fact]
         public async Task WhenMissingEnumMember_Diagnostic()
@@ -86,7 +86,7 @@ public class Program
         }
 
         /// <summary>
-        /// defaultがあってもenumメンバーが不足している場合、エラー
+        /// When missing enum member even with default, diagnostic
         /// </summary>
         [Fact]
         public async Task WhenMissingEnumMemberWithDefault_Diagnostic()
@@ -126,7 +126,7 @@ public class Program
         }
 
         /// <summary>
-        /// switch式ですべてのenumメンバーが処理されている場合、エラーなし
+        /// When all enum members are handled in switch expression, no diagnostic
         /// </summary>
         [Fact]
         public async Task WhenAllEnumMembersAreHandledInSwitchExpression_NoDiagnostic()
@@ -159,7 +159,7 @@ public class Program
         }
 
         /// <summary>
-        /// switch式でenumメンバーが不足している場合、エラー
+        /// When enum member missing in switch expression, diagnostic
         /// </summary>
         [Fact]
         public async Task WhenMissingEnumMemberInSwitchExpression_Diagnostic()
@@ -196,7 +196,7 @@ public class Program
         }
 
         /// <summary>
-        /// 複数のenumメンバーが不足している場合、すべて報告
+        /// When multiple enum members missing, reports all
         /// </summary>
         [Fact]
         public async Task WhenMultipleEnumMembersMissing_ReportsAll()
@@ -239,7 +239,7 @@ public class Program
         }
 
         /// <summary>
-        /// [Exhaustive]属性がないenumは検証されない
+        /// Enums without [Exhaustive] attribute are not validated
         /// </summary>
         [Fact]
         public async Task WhenEnumHasNoExhaustiveAttribute_NoDiagnostic()
@@ -270,7 +270,7 @@ public class Program
         }
 
         /// <summary>
-        /// [Flags]属性付きenumは検証されない
+        /// Enums with [Flags] attribute are not validated
         /// </summary>
         [Fact]
         public async Task WhenEnumHasFlagsAttribute_NoDiagnostic()
@@ -305,7 +305,7 @@ public class Program
         }
 
         /// <summary>
-        /// 空のswitchはすべてのenumメンバーが不足
+        /// Empty switch is missing all enum members
         /// </summary>
         [Fact]
         public async Task WhenEmptySwitch_Diagnostic()
@@ -342,7 +342,7 @@ public class Program
         }
 
         /// <summary>
-        /// enum値を整数で処理している場合も検出
+        /// Detect even when handling enum values as integers
         /// </summary>
         [Fact]
         public async Task WhenHandlingEnumByIntValue_Diagnostic()
@@ -380,7 +380,7 @@ public class Program
         }
 
         /// <summary>
-        /// whenガード付きパターンでenumメンバーを処理している場合
+        /// When handling enum members with when guard patterns
         /// </summary>
         [Fact]
         public async Task WhenHandlingEnumWithWhenGuard_RecognizesHandledMember()
@@ -418,7 +418,7 @@ public class Program
         }
 
         /// <summary>
-        /// whenガード付きパターンですべてのenumメンバーを処理している場合、エラーなし
+        /// When all enum members handled with when guard, no diagnostic
         /// </summary>
         [Fact]
         public async Task WhenAllEnumMembersHandledWithWhenGuard_NoDiagnostic()
@@ -463,7 +463,7 @@ public class Program
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net60,
             };
 
-            // Analyzerプロジェクト自体を参照に追加（属性を使用するため）
+            // Add Analyzer project itself as reference (to use attributes)
             test.TestState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);
 
             test.ExpectedDiagnostics.AddRange(expected);

@@ -9,7 +9,7 @@ namespace ExhaustiveSwitch.Analyzer
     internal static class EnumAnalysisHelpers
     {
         /// <summary>
-        /// シンボルが指定された属性を持つかどうかを判定します。
+        /// Determines whether a symbol has the specified attribute.
         /// </summary>
         public static bool HasAttribute(ISymbol symbol, INamedTypeSymbol attributeType)
         {
@@ -18,7 +18,7 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// enumが[Flags]属性を持つかチェック
+        /// Checks whether an enum has the [Flags] attribute.
         /// </summary>
         public static bool HasFlagsAttribute(INamedTypeSymbol enumType, Compilation compilation)
         {
@@ -33,7 +33,7 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// enumのすべてのメンバー名を取得
+        /// Gets all member names of an enum.
         /// </summary>
         public static HashSet<string> GetAllEnumMembers(INamedTypeSymbol enumType)
         {
@@ -46,7 +46,7 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// enumのすべてのメンバー名を定義順で取得
+        /// Gets all member names of an enum in their definition order.
         /// </summary>
         public static List<string> GetAllEnumMembersInOrder(INamedTypeSymbol enumType)
         {
@@ -58,7 +58,7 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// switchで処理されているenumメンバーを収集
+        /// Collects enum members that are handled in a switch.
         /// </summary>
         public static HashSet<string> CollectHandledEnumMembers(
             IReadOnlyList<SyntaxNode> patterns,
@@ -71,7 +71,7 @@ namespace ExhaustiveSwitch.Analyzer
             {
                 switch (pattern)
                 {
-                    // switch文: case GameState.Playing:
+                    // switch statement: case GameState.Playing:
                     case CaseSwitchLabelSyntax caseLabel:
                         var memberName = ExtractEnumMemberName(caseLabel.Value, semanticModel, enumType);
                         if (memberName != null)
@@ -80,7 +80,7 @@ namespace ExhaustiveSwitch.Analyzer
                         }
                         break;
 
-                    // switch文: case GameState.Playing when condition:
+                    // switch statement: case GameState.Playing when condition:
                     case CasePatternSwitchLabelSyntax patternLabel:
                         var patternMemberName = ExtractEnumMemberFromPattern(patternLabel.Pattern, semanticModel, enumType);
                         if (patternMemberName != null)
@@ -89,7 +89,7 @@ namespace ExhaustiveSwitch.Analyzer
                         }
                         break;
 
-                    // switch式のパターン
+                    // switch expression pattern
                     case ConstantPatternSyntax constantPattern:
                         var constantMemberName = ExtractEnumMemberName(constantPattern.Expression, semanticModel, enumType);
                         if (constantMemberName != null)
@@ -104,7 +104,7 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// パターンからenumメンバーを抽出
+        /// Extracts an enum member from a pattern.
         /// </summary>
         private static string ExtractEnumMemberFromPattern(
             PatternSyntax pattern,
@@ -120,14 +120,14 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// 式からenumメンバー名を抽出
+        /// Extracts an enum member name from an expression.
         /// </summary>
         private static string ExtractEnumMemberName(
             ExpressionSyntax expression,
             SemanticModel semanticModel,
             INamedTypeSymbol enumType)
         {
-            // シンボル情報を取得
+            // Get symbol information
             var symbolInfo = semanticModel.GetSymbolInfo(expression);
             if (symbolInfo.Symbol is IFieldSymbol fieldSymbol &&
                 fieldSymbol.IsConst &&
@@ -136,7 +136,7 @@ namespace ExhaustiveSwitch.Analyzer
                 return fieldSymbol.Name;
             }
 
-            // 定数値から逆引き
+            // Reverse lookup from constant value
             var constantValue = semanticModel.GetConstantValue(expression);
             if (!constantValue.HasValue)
             {

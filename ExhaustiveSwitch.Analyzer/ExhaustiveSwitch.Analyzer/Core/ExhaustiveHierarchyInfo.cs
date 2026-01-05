@@ -11,7 +11,7 @@ namespace ExhaustiveSwitch.Analyzer
         public Dictionary<INamedTypeSymbol, List<INamedTypeSymbol>> DirectParentsMap { get; }
 
         /// <summary>
-        /// Exhaustive型がジェネリック型かどうか
+        /// Whether the Exhaustive type is a generic type
         /// </summary>
         public bool IsGeneric { get; }
 
@@ -21,7 +21,7 @@ namespace ExhaustiveSwitch.Analyzer
             DirectChildrenMap = new Dictionary<INamedTypeSymbol, List<INamedTypeSymbol>>(SymbolEqualityComparer.Default);
             DirectParentsMap = new Dictionary<INamedTypeSymbol, List<INamedTypeSymbol>>(SymbolEqualityComparer.Default);
 
-            // ジェネリック型かどうかを判定（いずれかのCase型がジェネリックならtrue）
+            // Determine if it is a generic type (true if any Case type is generic)
             IsGeneric = allCases.Any(t => t.IsGenericType);
 
             foreach (var type in allCases)
@@ -46,7 +46,7 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// ジェネリック型の場合、型引数を適用してspecializedな型のセットを生成します
+        /// For generic types, applies type arguments to generate a set of specialized types
         /// </summary>
         public ExhaustiveHierarchyInfo ApplyTypeArguments(INamedTypeSymbol constructedExhaustiveType)
         {
@@ -62,13 +62,13 @@ namespace ExhaustiveSwitch.Analyzer
             {
                 if (caseType.IsGenericType && caseType.TypeArguments.Length == typeArguments.Length)
                 {
-                    // 型引数を適用して構築型を作成
+                    // Apply type arguments to create constructed type
                     var constructedCase = caseType.OriginalDefinition.Construct(typeArguments.ToArray());
                     constructedCases.Add(constructedCase);
                 }
                 else
                 {
-                    // 非ジェネリック型の場合はそのまま追加
+                    // For non-generic types, add as is
                     constructedCases.Add(caseType);
                 }
             }
@@ -77,7 +77,7 @@ namespace ExhaustiveSwitch.Analyzer
         }
     
         /// <summary>
-        /// 継承ツリー/インターフェース列を遡り、AllCasesに含まれる「最も近い祖先」を探す
+        /// Traverses the inheritance tree/interface list to find the "nearest ancestors" included in AllCases
         /// </summary>
         private List<INamedTypeSymbol> FindDirectParents(INamedTypeSymbol type, HashSet<INamedTypeSymbol> allCases)
         {

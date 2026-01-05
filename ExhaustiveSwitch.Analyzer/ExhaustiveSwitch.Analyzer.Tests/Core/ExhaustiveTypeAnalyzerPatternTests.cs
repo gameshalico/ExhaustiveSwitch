@@ -7,12 +7,12 @@ using Xunit;
 namespace ExhaustiveSwitch.Analyzer.Tests.Core
 {
     /// <summary>
-    /// パターンマッチングに関するテスト
+    /// Tests for pattern matching
     /// </summary>
     public class ExhaustiveTypeAnalyzerPatternTests
     {
         /// <summary>
-        /// whenガード条件を持つパターンでも網羅性をチェック
+        /// Check exhaustiveness even with when guard conditions
         /// </summary>
         [Fact]
         public async Task WhenPatternHasWhenClause_Diagnostic()
@@ -54,7 +54,7 @@ public class Program
         }
 
         /// <summary>
-        /// プロパティパターンを使用している場合でも網羅性をチェック
+        /// Check exhaustiveness even when using property patterns
         /// </summary>
         [Fact]
         public async Task WhenUsingPropertyPattern_NoDiagnostic()
@@ -99,7 +99,7 @@ public class Program
         }
 
         /// <summary>
-        /// RecursivePatternでも型を正しく認識
+        /// Correctly recognize types even with RecursivePattern
         /// </summary>
         [Fact]
         public async Task WhenUsingRecursivePattern_NoDiagnostic()
@@ -138,7 +138,7 @@ public class Program
         }
 
         /// <summary>
-        /// 型名だけのパターン(TypePattern)を正しく認識 - switch文
+        /// Correctly recognize type-only pattern (TypePattern) - switch statement
         /// </summary>
         [Fact]
         public async Task WhenUsingTypePatternInSwitchStatement_NoDiagnostic()
@@ -173,7 +173,7 @@ public class Program
         }
 
         /// <summary>
-        /// 型名だけのパターン(TypePattern)を正しく認識 - switch式
+        /// Correctly recognize type-only pattern (TypePattern) - switch expression
         /// </summary>
         [Fact]
         public async Task WhenUsingTypePatternInSwitchExpression_NoDiagnostic()
@@ -206,7 +206,7 @@ public class Program
         }
 
         /// <summary>
-        /// 型名だけのパターンで網羅が不足している場合はエラー
+        /// Error when type pattern is missing cases
         /// </summary>
         [Fact]
         public async Task WhenTypePatternMissingCase_Diagnostic()
@@ -243,7 +243,7 @@ public class Program
         }
 
         /// <summary>
-        /// 型名だけのパターンとキャストパターンの混在 - switch文
+        /// Mixing type pattern and declaration pattern - switch statement
         /// </summary>
         [Fact]
         public async Task WhenMixingTypePatternAndDeclarationPattern_NoDiagnostic()
@@ -278,7 +278,7 @@ public class Program
         }
 
         /// <summary>
-        /// 型名だけのパターンとキャストパターンの混在 - switch式
+        /// Mixing type pattern and declaration pattern - switch expression
         /// </summary>
         [Fact]
         public async Task WhenMixingTypePatternAndDeclarationPatternInExpression_NoDiagnostic()
@@ -311,7 +311,7 @@ public class Program
         }
 
         /// <summary>
-        /// 型名だけのパターンとキャストパターンが混在して網羅不足
+        /// Mixing patterns but missing case
         /// </summary>
         [Fact]
         public async Task WhenMixingPatternsButMissingCase_Diagnostic()
@@ -360,13 +360,13 @@ public class Program
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net60,
             };
 
-            // C# 9.0の言語バージョンを設定
+            // Set C# 9.0 language version
             test.TestState.AnalyzerConfigFiles.Add(("/.editorconfig", @"
 is_global = true
 build_property.LangVersion = 9.0
 "));
 
-            // Analyzerプロジェクト自体を参照に追加（属性を使用するため）
+            // Add Analyzer project itself as reference (to use attributes)
             test.TestState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);
 
             test.ExpectedDiagnostics.AddRange(expected);

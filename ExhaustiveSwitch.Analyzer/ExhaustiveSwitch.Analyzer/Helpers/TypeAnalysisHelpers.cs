@@ -8,11 +8,11 @@ namespace ExhaustiveSwitch.Analyzer
     internal static class TypeAnalysisHelpers
     {
         /// <summary>
-        /// シンボルが指定された属性を持つかどうかを判定します。
+        /// Determines whether a symbol has the specified attribute.
         /// </summary>
-        /// <param name="symbol">チェック対象のシンボル</param>
-        /// <param name="attributeType">属性の型</param>
-        /// <returns>属性を持つ場合はtrue</returns>
+        /// <param name="symbol">The symbol to check</param>
+        /// <param name="attributeType">The attribute type</param>
+        /// <returns>True if the symbol has the attribute</returns>
         public static bool HasAttribute(ISymbol symbol, INamedTypeSymbol attributeType)
         {
             return symbol.GetAttributes().Any(attr =>
@@ -20,20 +20,20 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// 型または型の基底型/実装インターフェースから、最初の[Exhaustive]型を検索します。
+        /// Finds the first [Exhaustive] type from the type or its base types/implemented interfaces.
         /// </summary>
-        /// <param name="type">検索対象の型</param>
-        /// <param name="exhaustiveAttributeType">ExhaustiveAttribute型</param>
-        /// <returns>[Exhaustive]属性を持つ最初の型、見つからない場合はnull</returns>
+        /// <param name="type">The type to search</param>
+        /// <param name="exhaustiveAttributeType">The ExhaustiveAttribute type</param>
+        /// <returns>The first type with [Exhaustive] attribute, or null if not found</returns>
         public static INamedTypeSymbol FindExhaustiveBaseType(ITypeSymbol type, INamedTypeSymbol exhaustiveAttributeType)
         {
-            // 型自体をチェック
+            // Check the type itself
             if (type is INamedTypeSymbol namedType && HasAttribute(namedType, exhaustiveAttributeType))
             {
                 return namedType;
             }
 
-            // インターフェースをチェック
+            // Check interfaces
             foreach (var iface in type.AllInterfaces)
             {
                 if (HasAttribute(iface, exhaustiveAttributeType))
@@ -42,7 +42,7 @@ namespace ExhaustiveSwitch.Analyzer
                 }
             }
 
-            // 基底クラスをチェック
+            // Check base classes
             var baseType = type.BaseType;
             while (baseType != null)
             {
@@ -58,22 +58,22 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// 型または型の基底型/実装インターフェースから、すべての[Exhaustive]型を検索します。
+        /// Finds all [Exhaustive] types from the type or its base types/implemented interfaces.
         /// </summary>
-        /// <param name="typeSymbol">検索対象の型</param>
-        /// <param name="exhaustiveAttributeType">ExhaustiveAttribute型</param>
-        /// <returns>[Exhaustive]属性を持つすべての型のリスト</returns>
+        /// <param name="typeSymbol">The type to search</param>
+        /// <param name="exhaustiveAttributeType">The ExhaustiveAttribute type</param>
+        /// <returns>A list of all types with [Exhaustive] attribute</returns>
         public static List<INamedTypeSymbol> FindAllExhaustiveTypes(INamedTypeSymbol typeSymbol, INamedTypeSymbol exhaustiveAttributeType)
         {
             var exhaustiveTypes = new List<INamedTypeSymbol>();
 
-            // 型自体をチェック
+            // Check the type itself
             if (HasAttribute(typeSymbol, exhaustiveAttributeType))
             {
                 exhaustiveTypes.Add(typeSymbol);
             }
 
-            // インターフェースをチェック
+            // Check interfaces
             foreach (var iface in typeSymbol.AllInterfaces)
             {
                 if (HasAttribute(iface, exhaustiveAttributeType))
@@ -82,7 +82,7 @@ namespace ExhaustiveSwitch.Analyzer
                 }
             }
 
-            // 基底クラスをチェック
+            // Check base classes
             var baseType = typeSymbol.BaseType;
             while (baseType != null)
             {
@@ -98,24 +98,24 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// 型が指定された基底型を実装または継承しているかを判定します。
-        /// ジェネリック型の場合、型引数の一致もチェックします。
+        /// Determines whether a type implements or is derived from the specified base type.
+        /// For generic types, also checks type argument matching.
         /// </summary>
-        /// <param name="typeSymbol">チェック対象の型</param>
-        /// <param name="baseType">基底型またはインターフェース</param>
-        /// <returns>実装/継承している場合はtrue、型自身が一致する場合もtrueを返す</returns>
+        /// <param name="typeSymbol">The type to check</param>
+        /// <param name="baseType">The base type or interface</param>
+        /// <returns>True if the type implements/inherits the base type, or if the type itself matches</returns>
         public static bool IsImplementingOrDerivedFrom(INamedTypeSymbol typeSymbol, INamedTypeSymbol baseType)
         {
-            // 型自身が一致するケース
+            // Case where the type itself matches
             if (SymbolEqualityComparer.Default.Equals(typeSymbol, baseType))
             {
                 return true;
             }
 
-            // ジェネリック型の場合、型定義と型引数を両方チェック
+            // For generic types, check both type definition and type arguments
             if (baseType.IsGenericType)
             {
-                // インターフェースの実装をチェック
+                // Check interface implementation
                 if (baseType.TypeKind == TypeKind.Interface)
                 {
                     foreach (var iface in typeSymbol.AllInterfaces)
@@ -127,7 +127,7 @@ namespace ExhaustiveSwitch.Analyzer
                     }
                 }
 
-                // 基底クラスの継承をチェック
+                // Check base class inheritance
                 var current = typeSymbol.BaseType;
                 while (current != null)
                 {
@@ -141,14 +141,14 @@ namespace ExhaustiveSwitch.Analyzer
                 return false;
             }
 
-            // 非ジェネリック型の場合の既存の処理
-            // インターフェースの実装をチェック
+            // For non-generic types, use existing logic
+            // Check interface implementation
             if (baseType.TypeKind == TypeKind.Interface)
             {
                 return typeSymbol.AllInterfaces.Contains(baseType, SymbolEqualityComparer.Default);
             }
 
-            // 基底クラスの継承をチェック
+            // Check base class inheritance
             var currentType = typeSymbol.BaseType;
             while (currentType != null)
             {
@@ -164,24 +164,24 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// ジェネリック型が一致するかをチェックします。
-        /// 型定義（OriginalDefinition）と型引数の両方をチェックします。
+        /// Checks whether generic types match.
+        /// Checks both type definition (OriginalDefinition) and type arguments.
         /// </summary>
         private static bool IsGenericTypeMatch(INamedTypeSymbol type1, INamedTypeSymbol type2)
         {
-            // 型定義が一致するかチェック
+            // Check if type definitions match
             if (!SymbolEqualityComparer.Default.Equals(type1.OriginalDefinition, type2.OriginalDefinition))
             {
                 return false;
             }
 
-            // 型引数の数が一致するかチェック
+            // Check if number of type arguments match
             if (type1.TypeArguments.Length != type2.TypeArguments.Length)
             {
                 return false;
             }
 
-            // 各型引数が一致するかチェック
+            // Check if each type argument matches
             for (int i = 0; i < type1.TypeArguments.Length; i++)
             {
                 if (!SymbolEqualityComparer.Default.Equals(type1.TypeArguments[i], type2.TypeArguments[i]))
@@ -194,21 +194,21 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// ジェネリック型のCase型が、指定された構築型に一致するかをチェックします。
-        /// 例: Success<T> と Success<int> の場合、型引数を適用して一致するかを判定
+        /// Checks whether a generic Case type matches the specified constructed type.
+        /// Example: For Success&lt;T&gt; and Success&lt;int&gt;, determines if they match when type arguments are applied.
         /// </summary>
-        /// <param name="caseType">Case属性が付いたジェネリック型（例: Success<T>）</param>
-        /// <param name="constructedType">具体的な型引数を持つ型（例: Success<int>）</param>
-        /// <returns>一致する場合はtrue</returns>
+        /// <param name="caseType">Generic type with Case attribute (e.g., Success&lt;T&gt;)</param>
+        /// <param name="constructedType">Type with concrete type arguments (e.g., Success&lt;int&gt;)</param>
+        /// <returns>True if they match</returns>
         public static bool IsGenericCaseMatch(INamedTypeSymbol caseType, INamedTypeSymbol constructedType)
         {
-            // 型定義が一致しない場合は不一致
+            // No match if type definitions don't match
             if (!SymbolEqualityComparer.Default.Equals(caseType.OriginalDefinition, constructedType.OriginalDefinition))
             {
                 return false;
             }
 
-            // 型引数の数が一致しない場合は不一致
+            // No match if number of type arguments don't match
             if (caseType.TypeArguments.Length != constructedType.TypeArguments.Length)
             {
                 return false;
@@ -218,27 +218,27 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// switchパターンから型情報を抽出します。
+        /// Extracts type information from a switch pattern.
         /// </summary>
-        /// <param name="pattern">パターン構文ノード</param>
-        /// <param name="semanticModel">セマンティックモデル</param>
-        /// <returns>抽出された型、取得できない場合はnull</returns>
+        /// <param name="pattern">The pattern syntax node</param>
+        /// <param name="semanticModel">The semantic model</param>
+        /// <returns>The extracted type, or null if not available</returns>
         public static INamedTypeSymbol ExtractTypeFromPattern(SyntaxNode pattern, SemanticModel semanticModel)
         {
             switch (pattern)
             {
-                // switch文: case Goblin g when ...:
+                // switch statement: case Goblin g when ...:
                 case CasePatternSwitchLabelSyntax casePatternLabel:
                     return ExtractTypeFromPatternSyntax(casePatternLabel.Pattern, semanticModel);
 
-                // switch文の型名のみのパターン: case Goblin:
-                // これはCaseSwitchLabelSyntax（定数パターン用）として解析されるが、
-                // Valueが型名の場合は型パターンとして扱う
+                // switch statement with type name only: case Goblin:
+                // This is parsed as CaseSwitchLabelSyntax (for constant patterns),
+                // but if Value is a type name, treat it as a type pattern
                 case CaseSwitchLabelSyntax caseLabel:
                     if (caseLabel.Value != null)
                     {
                         var typeInfo = semanticModel.GetTypeInfo(caseLabel.Value);
-                        // Valueが型を表す場合（Type != null かつ ConvertedTypeが型そのもの）
+                        // If Value represents a type (Type != null and ConvertedType is the type itself)
                         if (typeInfo.Type != null && typeInfo.ConvertedType != null &&
                             SymbolEqualityComparer.Default.Equals(typeInfo.Type, typeInfo.ConvertedType))
                         {
@@ -247,7 +247,7 @@ namespace ExhaustiveSwitch.Analyzer
                     }
                     return null;
 
-                // switch式または直接PatternSyntax: Goblin g => ... や Goblin => ...
+                // switch expression or direct PatternSyntax: Goblin g => ... or Goblin => ...
                 case PatternSyntax patternSyntax:
                     return ExtractTypeFromPatternSyntax(patternSyntax, semanticModel);
             }
@@ -256,7 +256,7 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// パターン構文から型情報を抽出します。
+        /// Extracts type information from a pattern syntax.
         /// </summary>
         private static INamedTypeSymbol ExtractTypeFromPatternSyntax(PatternSyntax pattern, SemanticModel semanticModel)
         {
@@ -275,11 +275,11 @@ namespace ExhaustiveSwitch.Analyzer
                     return typePatternInfo.Type as INamedTypeSymbol;
 
                 case ConstantPatternSyntax constantPattern:
-                    // switch式での型名のみのパターン（Goblin =>）は ConstantPatternSyntax として解析される
+                    // Type name only pattern in switch expression (Goblin =>) is parsed as ConstantPatternSyntax
                     if (constantPattern.Expression != null)
                     {
                         var constantTypeInfo = semanticModel.GetTypeInfo(constantPattern.Expression);
-                        // Expressionが型を表す場合
+                        // If Expression represents a type
                         if (constantTypeInfo.Type != null && constantTypeInfo.ConvertedType != null &&
                             SymbolEqualityComparer.Default.Equals(constantTypeInfo.Type, constantTypeInfo.ConvertedType))
                         {

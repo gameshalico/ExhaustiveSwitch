@@ -7,13 +7,13 @@ using Xunit;
 namespace ExhaustiveSwitch.Analyzer.Tests.Core
 {
     /// <summary>
-    /// 階層構造（多重継承、ネストしたExhaustive）に関するテスト
+    /// Tests for hierarchy structures (multiple inheritance, nested Exhaustive)
     /// </summary>
     public class ExhaustiveTypeAnalyzerHierarchyTests
     {
         /// <summary>
-        /// 多重継承: すべての具象型（KingSlime, QueenSlime, Orc）で処理する場合、エラーなし
-        /// Slimeはabstractなので、その子クラスをすべて処理すればカバーされる
+        /// Multiple inheritance: when all concrete types (KingSlime, QueenSlime, Orc) are handled, no diagnostic
+        /// Since Slime is abstract, handling all its child classes covers it
         /// </summary>
         [Fact]
         public async Task WhenMultipleInheritance_AllConcreteTypes_NoDiagnostic()
@@ -56,8 +56,8 @@ public class Program
         }
 
         /// <summary>
-        /// 多重継承: 中間クラス（Slime）と具象型（Orc）で処理する場合、エラーなし
-        /// Slimeで処理すれば、その子孫のKingSlimeとQueenSlimeもカバーされる
+        /// Multiple inheritance: when handled by intermediate class (Slime) and concrete type (Orc), no diagnostic
+        /// Handling Slime covers its descendants KingSlime and QueenSlime
         /// </summary>
         [Fact]
         public async Task WhenMultipleInheritance_IntermediateClass_NoDiagnostic()
@@ -98,9 +98,9 @@ public class Program
         }
 
         /// <summary>
-        /// 多重継承: 一部の具象型が不足している場合、エラー
-        /// KingSlimeとOrcのみで処理しているので、QueenSlimeが不足
-        /// （Slimeはabstractなので、KingSlimeとQueenSlimeがすべて処理されればカバーされる。QueenSlimeのみエラー）
+        /// Multiple inheritance: when some concrete types are missing, diagnostic
+        /// Only KingSlime and Orc are handled, so QueenSlime is missing
+        /// (Since Slime is abstract, it is covered if all KingSlime and QueenSlime are handled. Only QueenSlime errors)
         /// </summary>
         [Fact]
         public async Task WhenMultipleInheritance_MissingConcreteType_Diagnostic()
@@ -145,7 +145,7 @@ public class Program
         }
 
         /// <summary>
-        /// 多重継承: 中間クラスのみで処理、Orcが不足している場合、エラー
+        /// Multiple inheritance: when only intermediate class is handled and Orc is missing, diagnostic
         /// </summary>
         [Fact]
         public async Task WhenMultipleInheritance_MissingTopLevelType_Diagnostic()
@@ -188,7 +188,7 @@ public class Program
         }
 
         /// <summary>
-        /// Interface + 入れ子のExhaustive: 中間クラスが[Case, Exhaustive]の場合、中間クラスを処理すれば網羅OK
+        /// Interface + nested Exhaustive: when intermediate class is [Case, Exhaustive], handling intermediate class is sufficient
         /// </summary>
         [Fact]
         public async Task WhenNestedExhaustiveInterface_IntermediateClass_NoDiagnostic()
@@ -229,8 +229,8 @@ public class Program
         }
 
         /// <summary>
-        /// Interface + 入れ子のExhaustive: 中間クラスが[Case, Exhaustive]で、子クラスのみ処理した場合、中間クラスが不足
-        /// （中間クラスがabstractでない場合、インスタンス化可能なので明示的な処理が必要）
+        /// Interface + nested Exhaustive: when intermediate class is [Case, Exhaustive] and only child classes are handled, intermediate class is missing
+        /// (If intermediate class is not abstract, it can be instantiated so explicit handling is required)
         /// </summary>
         [Fact]
         public async Task WhenNestedExhaustiveInterface_OnlyChildClasses_Diagnostic()
@@ -277,7 +277,7 @@ public class Program
         }
 
         /// <summary>
-        /// Interface + 入れ子のExhaustive: 中間クラスがabstractで[Case, Exhaustive]の場合、子クラスのみで網羅OK
+        /// Interface + nested Exhaustive: when intermediate class is abstract and [Case, Exhaustive], only child classes are sufficient
         /// </summary>
         [Fact]
         public async Task WhenNestedExhaustiveInterface_AbstractIntermediateClass_OnlyChildClasses_NoDiagnostic()
@@ -320,8 +320,8 @@ public class Program
         }
 
         /// <summary>
-        /// 上位インターフェースでまとめて処理する場合、エラーなし
-        /// IFlyableインターフェースを実装しているDragonとHarpyをまとめて処理
+        /// When handled by super interface, no diagnostic
+        /// Dragon and Harpy implementing IFlyable are handled together
         /// </summary>
         [Fact]
         public async Task WhenHandledBySuperInterface_NoDiagnostic()
@@ -369,7 +369,7 @@ public class Program
             case Goblin goblin:
                 break;
             case IFlyable flyable:
-                // DragonとHarpyをまとめて処理
+                // Handle Dragon and Harpy together
                 break;
         }
     }
@@ -379,7 +379,7 @@ public class Program
         }
 
         /// <summary>
-        /// 上位インターフェースと具象型の混在パターン、エラーなし
+        /// Mixed pattern of super interface and concrete types, no diagnostic
         /// </summary>
         [Fact]
         public async Task WhenMixedSuperInterfaceAndConcrete_NoDiagnostic()
@@ -411,7 +411,7 @@ public class Program
         switch (enemy)
         {
             case IFlyable flyable:
-                // DragonとHarpyをまとめて処理
+                // Handle Dragon and Harpy together
                 break;
             case Goblin goblin:
                 break;
@@ -425,7 +425,7 @@ public class Program
         }
 
         /// <summary>
-        /// 上位インターフェースでの処理があっても、それでカバーされないケースが不足している場合、エラー
+        /// When super interface handling exists but cases not covered by it are missing, diagnostic
         /// </summary>
         [Fact]
         public async Task WhenSuperInterfaceDoesNotCoverAll_Diagnostic()
@@ -454,7 +454,7 @@ public class Program
         {|#0:switch (enemy)
         {
             case IFlyable flyable:
-                // DragonとHarpyのみ処理
+                // Only Dragon and Harpy are handled
                 break;
         }|}
     }
@@ -468,7 +468,7 @@ public class Program
         }
 
         /// <summary>
-        /// ネストしたswitchでも網羅性をチェック
+        /// Exhaustiveness check for nested switch
         /// </summary>
         [Fact]
         public async Task WhenNestedSwitch_BothChecked()
@@ -528,7 +528,7 @@ public class Program
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net60,
             };
 
-            // Analyzerプロジェクト自体を参照に追加（属性を使用するため）
+            // Add Analyzer project itself as reference (to use attributes)
             test.TestState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);
 
             test.ExpectedDiagnostics.AddRange(expected);

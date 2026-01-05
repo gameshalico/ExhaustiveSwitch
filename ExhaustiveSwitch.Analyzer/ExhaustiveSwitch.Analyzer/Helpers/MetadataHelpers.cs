@@ -6,13 +6,13 @@ namespace ExhaustiveSwitch.Analyzer
     internal static class MetadataHelpers
     {
         /// <summary>
-        /// 型の完全なメタデータ名を取得します。
-        /// ジェネリック型の場合、アリティ（`1など）を含む形式で返します。
-        /// ネストされた型の場合、"+"で結合します。
-        /// 例: "Namespace.OuterClass+InnerClass`1"
+        /// Gets the full metadata name of a type.
+        /// For generic types, returns a format that includes arity (e.g., `1).
+        /// For nested types, joins with "+".
+        /// Example: "Namespace.OuterClass+InnerClass`1"
         /// </summary>
-        /// <param name="type">対象の型シンボル</param>
-        /// <returns>完全なメタデータ名</returns>
+        /// <param name="type">The target type symbol</param>
+        /// <returns>The full metadata name</returns>
         public static string GetFullMetadataName(INamedTypeSymbol type)
         {
             if (type == null)
@@ -24,7 +24,7 @@ namespace ExhaustiveSwitch.Analyzer
             var currentType = type;
             while (currentType != null)
             {
-                // MetadataNameはジェネリック型の場合 "TypeName`1" のような形式になっている
+                // MetadataName is in the format "TypeName`1" for generic types
                 parts.Insert(0, currentType.MetadataName);
                 currentType = currentType.ContainingType;
             }
@@ -39,11 +39,11 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// 名前空間の完全な名前を取得します。
-        /// グローバル名前空間の場合は空文字列を返します。
+        /// Gets the full name of a namespace.
+        /// Returns an empty string for the global namespace.
         /// </summary>
-        /// <param name="namespaceSymbol">名前空間シンボル</param>
-        /// <returns>名前空間の完全な名前（"."で区切られた形式）</returns>
+        /// <param name="namespaceSymbol">The namespace symbol</param>
+        /// <returns>The full namespace name (separated by ".")</returns>
         public static string GetNamespaceName(INamespaceSymbol namespaceSymbol)
         {
             if (namespaceSymbol == null || namespaceSymbol.IsGlobalNamespace)

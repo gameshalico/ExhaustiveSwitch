@@ -6,11 +6,11 @@ namespace ExhaustiveSwitch.Analyzer
     internal static class DiagnosticHelpers
     {
         /// <summary>
-        /// 診断情報から不足している型のシンボルを取得します。
+        /// Gets the missing type symbol from diagnostic information.
         /// </summary>
-        /// <param name="diagnostic">診断情報</param>
-        /// <param name="compilation">コンパイル情報</param>
-        /// <returns>不足している型のシンボル、取得できない場合はnull</returns>
+        /// <param name="diagnostic">The diagnostic information</param>
+        /// <param name="compilation">The compilation information</param>
+        /// <returns>The missing type symbol, or null if not available</returns>
         public static INamedTypeSymbol GetMissingTypeFromDiagnostic(Diagnostic diagnostic, Compilation compilation)
         {
             if (diagnostic.Properties.TryGetValue("MissingTypeMetadata", out var metadataName) && !string.IsNullOrEmpty(metadataName))
@@ -22,10 +22,10 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// 診断情報から不足している型の表示名を取得します。
+        /// Gets the display name of the missing type from diagnostic information.
         /// </summary>
-        /// <param name="diagnostic">診断情報</param>
-        /// <returns>不足している型の表示名</returns>
+        /// <param name="diagnostic">The diagnostic information</param>
+        /// <returns>The display name of the missing type</returns>
         public static string GetMissingTypeNameFromDiagnostic(Diagnostic diagnostic)
         {
             diagnostic.Properties.TryGetValue("MissingType", out var typeName);
@@ -33,11 +33,11 @@ namespace ExhaustiveSwitch.Analyzer
         }
 
         /// <summary>
-        /// 診断情報からすべての不足している型のシンボルを取得します。
+        /// Gets all missing type symbols from diagnostic information.
         /// </summary>
-        /// <param name="diagnostic">診断情報</param>
-        /// <param name="compilation">コンパイル情報</param>
-        /// <returns>すべての不足している型のシンボルのリスト</returns>
+        /// <param name="diagnostic">The diagnostic information</param>
+        /// <param name="compilation">The compilation information</param>
+        /// <returns>A list of all missing type symbols</returns>
         public static List<INamedTypeSymbol> GetAllMissingTypesFromDiagnostic(Diagnostic diagnostic, Compilation compilation)
         {
             var result = new List<INamedTypeSymbol>();

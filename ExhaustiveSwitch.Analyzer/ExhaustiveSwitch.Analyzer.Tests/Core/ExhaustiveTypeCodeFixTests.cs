@@ -9,7 +9,7 @@ namespace ExhaustiveSwitch.Analyzer.Tests.Core
     public class ExhaustiveSwitchCodeFixTests
     {
         /// <summary>
-        /// CodeFix: switch文で不足しているcaseを追加
+        /// CodeFix: add missing case to switch statement
         /// </summary>
         [Fact]
         public async Task CodeFix_AddMissingCaseToSwitchStatement()
@@ -72,7 +72,7 @@ public class Program
         }
 
         /// <summary>
-        /// CodeFix: switch式で不足しているarmを追加
+        /// CodeFix: add missing arm to switch expression
         /// </summary>
         [Fact]
         public async Task CodeFix_AddMissingArmToSwitchExpression()
@@ -134,7 +134,7 @@ public class Program
         }
 
         /// <summary>
-        /// CodeFix: defaultセクションの前に不足しているcaseを追加
+        /// CodeFix: add missing case before default section
         /// </summary>
         [Fact]
         public async Task CodeFix_AddMissingCaseBeforeDefault()
@@ -224,7 +224,7 @@ public class Program
                 test.FixedCode = fixedSource;
             }
 
-            // Analyzerプロジェクト自体を参照に追加（属性を使用するため）
+            // Add Analyzer project itself as reference (to use attributes)
             test.TestState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);
             test.FixedState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);
             test.BatchFixedState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);

@@ -22,7 +22,7 @@ namespace ExhaustiveSwitch.Analyzer
         
         public sealed override FixAllProvider GetFixAllProvider()
         {
-            // Fix Allは見づらい上、思想上使ってほしくないため、対応しない
+            // Fix All is not supported as it makes the code hard to read and goes against the design philosophy
             return null;
         }
 
@@ -48,7 +48,7 @@ namespace ExhaustiveSwitch.Analyzer
 
                 foreach (var diag in allDiagnostics)
                 {
-                    // 最初の診断の場合のみ、"すべて追加"のCodeFixを登録
+                    // Register "Add all" CodeFix only for the first diagnostic
                     if (diag.Properties.TryGetValue("IsFirstDiagnostic", out var isFirst) && isFirst == "true")
                     {
                         var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
@@ -65,7 +65,7 @@ namespace ExhaustiveSwitch.Analyzer
                         }
                     }
 
-                    // 各診断に対して個別のCodeFixを登録
+                    // Register individual CodeFix for each diagnostic
                     var typeName = DiagnosticHelpers.GetMissingTypeNameFromDiagnostic(diag);
                     context.RegisterCodeFix(
                         CodeAction.Create(
@@ -86,7 +86,7 @@ namespace ExhaustiveSwitch.Analyzer
 
                 foreach (var diag in allDiagnostics)
                 {
-                    // 最初の診断の場合のみ、"すべて追加"のCodeFixを登録
+                    // Register "Add all" CodeFix only for the first diagnostic
                     if (diag.Properties.TryGetValue("IsFirstDiagnostic", out var isFirst) && isFirst == "true")
                     {
                         var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
@@ -103,7 +103,7 @@ namespace ExhaustiveSwitch.Analyzer
                         }
                     }
 
-                    // 各診断に対して個別のCodeFixを登録
+                    // Register individual CodeFix for each diagnostic
                     var typeName = DiagnosticHelpers.GetMissingTypeNameFromDiagnostic(diag);
                     context.RegisterCodeFix(CodeAction.Create(
                         title: string.Format(Resources.CodeFixAddSingleCase, typeName),

@@ -7,12 +7,12 @@ using Xunit;
 namespace ExhaustiveSwitch.Analyzer.Tests.Core
 {
     /// <summary>
-    /// ジェネリック型に関するExhaustiveTypeAnalyzerのテスト
+    /// Tests for ExhaustiveTypeAnalyzer with generic types
     /// </summary>
     public class ExhaustiveTypeAnalyzerGenericsTests
     {
         /// <summary>
-        /// ジェネリックインターフェース: すべてのケースが処理されている場合、エラーなし
+        /// Generic interface: when all cases are handled, no diagnostic
         /// </summary>
         [Fact]
         public async Task WhenGenericInterface_AllCasesHandled_NoDiagnostic()
@@ -47,7 +47,7 @@ public class Program
         }
 
         /// <summary>
-        /// ジェネリックインターフェース: 一部のケースが不足している場合、エラー
+        /// Generic interface: when some cases are missing, diagnostic
         /// </summary>
         [Fact]
         public async Task WhenGenericInterface_MissingCase_Diagnostic()
@@ -84,7 +84,7 @@ public class Program
         }
 
         /// <summary>
-        /// ジェネリックインターフェース: switch式ですべてのケースが処理されている場合、エラーなし
+        /// Generic interface: when all cases are handled in switch expression, no diagnostic
         /// </summary>
         [Fact]
         public async Task WhenGenericInterface_SwitchExpression_AllCasesHandled_NoDiagnostic()
@@ -120,7 +120,7 @@ public class Program
         }
 
         /// <summary>
-        /// ジェネリックインターフェース: switch式で一部のケースが不足している場合、エラー
+        /// Generic interface: when some cases are missing in switch expression, diagnostic
         /// </summary>
         [Fact]
         public async Task WhenGenericInterface_SwitchExpression_MissingCase_Diagnostic()
@@ -160,7 +160,7 @@ public class Program
         }
 
         /// <summary>
-        /// 複数の型引数を持つジェネリック: すべてのケースが処理されている場合、エラーなし
+        /// Multiple type parameters: when all cases are handled, no diagnostic
         /// </summary>
         [Fact]
         public async Task WhenMultipleTypeParameters_AllCasesHandled_NoDiagnostic()
@@ -195,7 +195,7 @@ public class Program
         }
 
         /// <summary>
-        /// 複数の型引数を持つジェネリック: 一部のケースが不足している場合、エラー
+        /// Multiple type parameters: when some cases are missing, diagnostic
         /// </summary>
         [Fact]
         public async Task WhenMultipleTypeParameters_MissingCase_Diagnostic()
@@ -232,7 +232,7 @@ public class Program
         }
 
         /// <summary>
-        /// ジェネリック抽象クラス: すべてのケースが処理されている場合、エラーなし
+        /// Generic abstract class: when all cases are handled, no diagnostic
         /// </summary>
         [Fact]
         public async Task WhenGenericAbstractClass_AllCasesHandled_NoDiagnostic()
@@ -267,7 +267,7 @@ public class Program
         }
 
         /// <summary>
-        /// ジェネリック型の階層構造: すべてのケースが処理されている場合、エラーなし
+        /// Generic type hierarchy: when all cases are handled, no diagnostic
         /// </summary>
         [Fact]
         public async Task WhenGenericHierarchy_AllCasesHandled_NoDiagnostic()
@@ -309,7 +309,7 @@ public class Program
         }
 
         /// <summary>
-        /// ジェネリック型の階層構造: 一部のケースが不足している場合、複数のエラー
+        /// Generic type hierarchy: when some cases are missing, multiple diagnostics
         /// </summary>
         [Fact]
         public async Task WhenGenericHierarchy_MultipleCasesMissing_Diagnostic()
@@ -355,8 +355,8 @@ public class Program
         }
 
         /// <summary>
-        /// 非ジェネリック型とジェネリック型の混在:
-        /// ジェネリック型の場合、どのような型引数でも処理できるパターンが必要
+        /// Mixed generic and non-generic:
+        /// For generic types, pattern must handle any type argument
         /// </summary>
         [Fact]
         public async Task WhenMixedGenericAndNonGeneric_MissingGenericCase_Diagnostic()
@@ -400,7 +400,7 @@ public class Program
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net60,
             };
 
-            // Analyzerプロジェクト自体を参照に追加（属性を使用するため）
+            // Add Analyzer project itself as reference (to use attributes)
             test.TestState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);
 
             test.ExpectedDiagnostics.AddRange(expected);

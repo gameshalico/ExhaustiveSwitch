@@ -11,17 +11,17 @@ using Xunit;
 namespace ExhaustiveSwitch.Analyzer.Tests.Core
 {
     /// <summary>
-    /// クロスアセンブリに関するテスト
+    /// Tests for cross-assembly scenarios
     /// </summary>
     public class ExhaustiveTypeAnalyzerCrossAssemblyTests
     {
         /// <summary>
-        /// クロスアセンブリ: 別アセンブリの[Case]型を検出
+        /// Cross-assembly: detect [Case] types in referenced assembly
         /// </summary>
         [Fact]
         public async Task WhenCaseTypeInReferencedAssembly_Diagnostic()
         {
-            // 参照アセンブリのコード（ライブラリ側）
+            // Referenced assembly code (library side)
             var libraryCode = @"
 using ExhaustiveSwitch;
 
@@ -35,7 +35,7 @@ public sealed class Goblin : IEnemy { }
 public sealed class Orc : IEnemy { }
 ";
 
-            // メインプロジェクトのコード
+            // Main project code
             var mainCode = @"
 public class Program
 {
@@ -57,12 +57,12 @@ public class Program
         }
 
         /// <summary>
-        /// クロスアセンブリ: 別アセンブリですべてのケースが処理されている場合、エラーなし
+        /// Cross-assembly: when all cases from referenced assembly are handled, no diagnostic
         /// </summary>
         [Fact]
         public async Task WhenAllCasesFromReferencedAssembly_NoDiagnostic()
         {
-            // 参照アセンブリのコード（ライブラリ側）
+            // Referenced assembly code (library side)
             var libraryCode = @"
 using ExhaustiveSwitch;
 
@@ -76,7 +76,7 @@ public sealed class Goblin : IEnemy { }
 public sealed class Orc : IEnemy { }
 ";
 
-            // メインプロジェクトのコード
+            // Main project code
             var mainCode = @"
 public class Program
 {
@@ -96,12 +96,12 @@ public class Program
         }
 
         /// <summary>
-        /// Transitive参照: A → B → Attributesの間接参照で[Case]型を検出
+        /// Transitive reference: detect [Case] types through indirect reference A → B → Attributes
         /// </summary>
         [Fact]
         public async Task WhenTransitiveReference_Diagnostic()
         {
-            // ライブラリBのコード（Attributesを直接参照）
+            // Library B code (directly references Attributes)
             var libraryBCode = @"
 using ExhaustiveSwitch;
 
@@ -115,13 +115,13 @@ public sealed class Goblin : IEnemy { }
 public sealed class Orc : IEnemy { }
 ";
 
-            // ライブラリCのコード（ライブラリBを参照、Attributesは間接参照）
+            // Library C code (references library B, Attributes are indirect reference)
             var libraryCCode = @"
 [ExhaustiveSwitch.Case]
 public sealed class Dragon : IEnemy { }
 ";
 
-            // メインプロジェクトのコード（ライブラリBとCを参照）
+            // Main project code (references libraries B and C)
             var mainCode = @"
 public class Program
 {
@@ -145,7 +145,7 @@ public class Program
         }
 
         /// <summary>
-        /// クロスアセンブリテスト用のヘルパーメソッド
+        /// Helper method for cross-assembly tests
         /// </summary>
         private static async Task VerifyCrossAssemblyAnalyzerAsync(string libraryCode, string mainCode, params DiagnosticResult[] expected)
         {
@@ -155,10 +155,10 @@ public class Program
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net60,
             };
 
-            // Analyzerプロジェクト自体を参照に追加（属性を使用するため）
+            // Add Analyzer project itself as reference (to use attributes)
             test.TestState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);
 
-            // ライブラリコードをコンパイルしてMetadataReferenceとして追加
+            // Compile library code and add as MetadataReference
             var libraryReference = await CompileToMetadataReferenceAsync("LibraryAssembly", libraryCode);
             test.TestState.AdditionalReferences.Add(libraryReference);
 
@@ -168,7 +168,7 @@ public class Program
         }
 
         /// <summary>
-        /// Transitive参照テスト用のヘルパーメソッド
+        /// Helper method for transitive reference tests
         /// </summary>
         private static async Task VerifyTransitiveReferenceAnalyzerAsync(
             string libraryBCode,
@@ -182,16 +182,16 @@ public class Program
                 ReferenceAssemblies = ReferenceAssemblies.Net.Net60,
             };
 
-            // Analyzerプロジェクト自体を参照に追加（属性を使用するため）
+            // Add Analyzer project itself as reference (to use attributes)
             test.TestState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);
 
-            // ライブラリB（Attributesを直接参照）をコンパイル
+            // Compile library B (directly references Attributes)
             var libraryBReference = await CompileToMetadataReferenceAsync("LibraryB", libraryBCode);
 
-            // ライブラリC（ライブラリBを参照、Attributesは間接参照）をコンパイル
+            // Compile library C (references library B, Attributes are indirect reference)
             var libraryCReference = await CompileToMetadataReferenceAsync("LibraryC", libraryCCode, libraryBReference);
 
-            // メインプロジェクトに両方のライブラリを追加
+            // Add both libraries to main project
             test.TestState.AdditionalReferences.Add(libraryBReference);
             test.TestState.AdditionalReferences.Add(libraryCReference);
 
@@ -201,17 +201,17 @@ public class Program
         }
 
         /// <summary>
-        /// コードをコンパイルしてMetadataReferenceを作成
+        /// Compile code and create MetadataReference
         /// </summary>
         private static async Task<MetadataReference> CompileToMetadataReferenceAsync(string assemblyName, string code, params MetadataReference[] additionalReferences)
         {
             var syntaxTree = CSharpSyntaxTree.ParseText(code);
 
-            // ReferenceAssembliesから参照を取得
+            // Get references from ReferenceAssemblies
             var referenceAssemblies = ReferenceAssemblies.Net.Net60;
             var resolvedReferences = await referenceAssemblies.ResolveAsync(LanguageNames.CSharp, default);
 
-            // 基本的な参照を追加
+            // Add basic references
             var references = new List<MetadataReference>(resolvedReferences);
             references.Add(MetadataReference.CreateFromFile(typeof(ExhaustiveAttribute).Assembly.Location));
             references.AddRange(additionalReferences);

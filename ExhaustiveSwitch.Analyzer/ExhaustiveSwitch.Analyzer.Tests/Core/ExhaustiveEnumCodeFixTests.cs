@@ -7,12 +7,12 @@ using Xunit;
 namespace ExhaustiveSwitch.Analyzer.Tests.Core
 {
     /// <summary>
-    /// Exhaustive enum CodeFixのテスト
+    /// Tests for Exhaustive enum CodeFix
     /// </summary>
     public class ExhaustiveEnumCodeFixTests
     {
         /// <summary>
-        /// switch文で1つのenumメンバーを追加
+        /// Add single enum member to switch statement
         /// </summary>
         [Fact]
         public async Task AddSingleEnumMemberToSwitchStatement()
@@ -77,7 +77,7 @@ public class Program
         }
 
         /// <summary>
-        /// switch文ですべてのenumメンバーを一括追加
+        /// Add all enum members to switch statement at once
         /// </summary>
         [Fact]
         public async Task AddAllEnumMembersToSwitchStatement()
@@ -152,7 +152,7 @@ public class Program
         }
 
         /// <summary>
-        /// switch文でdefaultの前にenumメンバーを追加
+        /// Add enum member before default in switch statement
         /// </summary>
         [Fact]
         public async Task AddEnumMemberBeforeDefault()
@@ -223,7 +223,7 @@ public class Program
         }
 
         /// <summary>
-        /// switch式でenumメンバーを追加
+        /// Add enum member to switch expression
         /// </summary>
         [Fact]
         public async Task AddEnumMemberToSwitchExpression()
@@ -285,7 +285,7 @@ public class Program
         }
 
         /// <summary>
-        /// switch式で複数のenumメンバーを追加
+        /// Add multiple enum members to switch expression
         /// </summary>
         [Fact]
         public async Task AddAllEnumMembersToSwitchExpression()
@@ -350,7 +350,7 @@ public class Program
         }
 
         /// <summary>
-        /// switch式でdiscardパターンがない場合、末尾に追加
+        /// Add enum member at the end when no discard pattern in switch expression
         /// </summary>
         [Fact]
         public async Task AddEnumMemberToSwitchExpressionWithoutDiscard()
@@ -410,7 +410,7 @@ public class Program
         }
 
         /// <summary>
-        /// 完全修飾名のenumでもCodeFixが動作する
+        /// CodeFix works with fully qualified enum names
         /// </summary>
         [Fact]
         public async Task AddEnumMemberWithFullyQualifiedName()
@@ -497,7 +497,7 @@ namespace MyNamespace
                 CodeActionIndex = codeActionIndex,
             };
 
-            // Analyzerプロジェクト自体を参照に追加（属性を使用するため）
+            // Add Analyzer project itself as reference (to use attributes)
             test.TestState.AdditionalReferences.Add(typeof(ExhaustiveAttribute).Assembly);
 
             test.ExpectedDiagnostics.AddRange(expected);
