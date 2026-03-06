@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -61,7 +62,7 @@ namespace ExhaustiveSwitch.Analyzer
         /// Collects enum members that are handled in a switch.
         /// </summary>
         public static HashSet<string> CollectHandledEnumMembers(
-            IReadOnlyList<SyntaxNode> patterns,
+            IEnumerable<SyntaxNode> patterns,
             SemanticModel semanticModel,
             INamedTypeSymbol enumType)
         {

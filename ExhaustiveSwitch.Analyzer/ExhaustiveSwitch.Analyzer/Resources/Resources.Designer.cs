@@ -167,5 +167,32 @@ namespace ExhaustiveSwitch.Analyzer {
                 return ResourceManager.GetString("EnumAnalyzerDescription", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Missing null case for nullable Exhaustive enum.
+        /// </summary>
+        internal static string NullableEnumAnalyzerTitle {
+            get {
+                return ResourceManager.GetString("NullableEnumAnalyzerTitle", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Switch on nullable Exhaustive enum '{0}' does not handle the null case..
+        /// </summary>
+        internal static string NullableEnumAnalyzerMessageFormat {
+            get {
+                return ResourceManager.GetString("NullableEnumAnalyzerMessageFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Switch statements on nullable Exhaustive enums must handle the null case explicitly..
+        /// </summary>
+        internal static string NullableEnumAnalyzerDescription {
+            get {
+                return ResourceManager.GetString("NullableEnumAnalyzerDescription", resourceCulture);
+            }
+        }
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -29,7 +30,25 @@ namespace ExhaustiveSwitch.Analyzer
             isEnabledByDefault: true,
             description: Description);
 
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule);
+        private const string NullableDiagnosticId = "EXH1002";
+
+        private static readonly LocalizableString NullableTitle = new LocalizableResourceString(
+            nameof(Resources.NullableEnumAnalyzerTitle), Resources.ResourceManager, typeof(Resources));
+        private static readonly LocalizableString NullableMessageFormat = new LocalizableResourceString(
+            nameof(Resources.NullableEnumAnalyzerMessageFormat), Resources.ResourceManager, typeof(Resources));
+        private static readonly LocalizableString NullableDescription = new LocalizableResourceString(
+            nameof(Resources.NullableEnumAnalyzerDescription), Resources.ResourceManager, typeof(Resources));
+
+        private static readonly DiagnosticDescriptor NullableRule = new DiagnosticDescriptor(
+            NullableDiagnosticId,
+            NullableTitle,
+            NullableMessageFormat,
+            Category,
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true,
+            description: NullableDescription);
+
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => ImmutableArray.Create(Rule, NullableRule);
 
         private static readonly SymbolDisplayFormat SimpleTypeNameFormat = new SymbolDisplayFormat(
             typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameOnly,
@@ -70,50 +89,72 @@ namespace ExhaustiveSwitch.Analyzer
             var semanticModel = context.SemanticModel;
 
             var typeInfo = semanticModel.GetTypeInfo(switchStatement.Expression);
-            var enumType = typeInfo.Type as INamedTypeSymbol;
+            var rawType = typeInfo.Type;
+            if (rawType == null) return;
 
+            // Ignore if the type is not an enum
+            var enumType = TypeAnalysisHelpers.UnwrapNullable(rawType, compilation) as INamedTypeSymbol;
             if (enumType?.TypeKind != TypeKind.Enum)
             {
                 return;
             }
 
-            // Ignore if [Flags] attribute is present
+            // Ignore if the [Flags] attribute is present
             if (EnumAnalysisHelpers.HasFlagsAttribute(enumType, compilation))
             {
                 return;
             }
 
-            // Check for [Exhaustive] attribute
+            // Check for the [Exhaustive] attribute
             if (!EnumAnalysisHelpers.HasAttribute(enumType, exhaustiveAttributeType))
             {
                 return;
             }
 
-            // Get all enum members
-            var allMembers = EnumAnalysisHelpers.GetAllEnumMembers(enumType);
-
             // Collect handled members
             var handledMembers = EnumAnalysisHelpers.CollectHandledEnumMembers(
-                switchStatement.Sections.SelectMany(s => s.Labels).ToList(),
+                switchStatement.Sections.SelectMany(s => s.Labels),
                 semanticModel,
                 enumType);
 
             // Detect missing members
-            var missingMembers = allMembers.Except(handledMembers);
+            var missingMembers = EnumAnalysisHelpers.GetAllEnumMembers(enumType);
+            missingMembers.ExceptWith(handledMembers);
 
+            // Check for missing members
             foreach (var missing in missingMembers)
             {
+                var simpleTypeNameFormat = enumType.ToDisplayString(SimpleTypeNameFormat);
                 var properties = ImmutableDictionary.CreateBuilder<string, string>();
                 properties.Add("MissingMember", missing);
-                properties.Add("EnumType", enumType.ToDisplayString(SimpleTypeNameFormat));
+                properties.Add("EnumType", simpleTypeNameFormat);
                 properties.Add("EnumTypeMetadata", MetadataHelpers.GetFullMetadataName(enumType));
 
                 var diagnostic = Diagnostic.Create(
                     Rule,
                     switchStatement.GetLocation(),
                     properties.ToImmutable(),
-                    enumType.ToDisplayString(SimpleTypeNameFormat),
+                    simpleTypeNameFormat,
                     missing);
+                context.ReportDiagnostic(diagnostic);
+            }
+
+            // Check for a missing null case when the type is nullable
+            var isNullable = TypeAnalysisHelpers.IsNullableValueType(rawType, compilation);
+            var labels = switchStatement.Sections.SelectMany(s => s.Labels);
+            if (isNullable && !TypeAnalysisHelpers.HasNullPattern(labels))
+            {
+                var simpleTypeNameFormat = enumType.ToDisplayString(SimpleTypeNameFormat);
+                var properties = ImmutableDictionary.CreateBuilder<string, string>();
+                properties.Add("MissingMember", "null");
+                properties.Add("EnumType", simpleTypeNameFormat);
+                properties.Add("EnumTypeMetadata", MetadataHelpers.GetFullMetadataName(enumType));
+
+                var diagnostic = Diagnostic.Create(
+                    NullableRule,
+                    switchStatement.GetLocation(),
+                    properties.ToImmutable(),
+                    simpleTypeNameFormat);
                 context.ReportDiagnostic(diagnostic);
             }
         }
@@ -127,50 +168,72 @@ namespace ExhaustiveSwitch.Analyzer
             var semanticModel = context.SemanticModel;
 
             var typeInfo = semanticModel.GetTypeInfo(switchExpression.GoverningExpression);
-            var enumType = typeInfo.Type as INamedTypeSymbol;
+            var rawType = typeInfo.Type;
+            if (rawType == null) return;
 
+            // Ignore if the type is not an enum
+            var enumType = TypeAnalysisHelpers.UnwrapNullable(rawType, compilation) as INamedTypeSymbol;
             if (enumType?.TypeKind != TypeKind.Enum)
             {
                 return;
             }
 
-            // Ignore if [Flags] attribute is present
+            // Ignore if the [Flags] attribute is present
             if (EnumAnalysisHelpers.HasFlagsAttribute(enumType, compilation))
             {
                 return;
             }
 
-            // Check for [Exhaustive] attribute
+            // Check for the [Exhaustive] attribute
             if (!EnumAnalysisHelpers.HasAttribute(enumType, exhaustiveAttributeType))
             {
                 return;
             }
 
-            // Get all enum members
-            var allMembers = EnumAnalysisHelpers.GetAllEnumMembers(enumType);
-
             // Collect handled members
             var handledMembers = EnumAnalysisHelpers.CollectHandledEnumMembers(
-                switchExpression.Arms.Select(a => (SyntaxNode)a.Pattern).ToList(),
+                switchExpression.Arms.Select(a => (SyntaxNode)a.Pattern),
                 semanticModel,
                 enumType);
 
             // Detect missing members
-            var missingMembers = allMembers.Except(handledMembers);
+            var missingMembers = EnumAnalysisHelpers.GetAllEnumMembers(enumType);
+            missingMembers.ExceptWith(handledMembers);
 
+            // Check for missing members
             foreach (var missing in missingMembers)
             {
+                var simpleTypeNameFormat = enumType.ToDisplayString(SimpleTypeNameFormat);
                 var properties = ImmutableDictionary.CreateBuilder<string, string>();
                 properties.Add("MissingMember", missing);
-                properties.Add("EnumType", enumType.ToDisplayString(SimpleTypeNameFormat));
+                properties.Add("EnumType", simpleTypeNameFormat);
                 properties.Add("EnumTypeMetadata", MetadataHelpers.GetFullMetadataName(enumType));
 
                 var diagnostic = Diagnostic.Create(
                     Rule,
                     switchExpression.GetLocation(),
                     properties.ToImmutable(),
-                    enumType.ToDisplayString(SimpleTypeNameFormat),
+                    simpleTypeNameFormat,
                     missing);
+                context.ReportDiagnostic(diagnostic);
+            }
+
+            // Check for a missing null case when the type is nullable
+            var isNullable = TypeAnalysisHelpers.IsNullableValueType(rawType, compilation);
+            var armPatterns = switchExpression.Arms.Select(a => (SyntaxNode)a.Pattern);
+            if (isNullable && !TypeAnalysisHelpers.HasNullPattern(armPatterns))
+            {
+                var simpleTypeNameFormat = enumType.ToDisplayString(SimpleTypeNameFormat);
+                var properties = ImmutableDictionary.CreateBuilder<string, string>();
+                properties.Add("MissingMember", "null");
+                properties.Add("EnumType", simpleTypeNameFormat);
+                properties.Add("EnumTypeMetadata", MetadataHelpers.GetFullMetadataName(enumType));
+
+                var diagnostic = Diagnostic.Create(
+                    NullableRule,
+                    switchExpression.GetLocation(),
+                    properties.ToImmutable(),
+                    simpleTypeNameFormat);
                 context.ReportDiagnostic(diagnostic);
             }
         }

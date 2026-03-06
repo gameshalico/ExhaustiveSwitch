@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Composition;
@@ -19,8 +18,9 @@ namespace ExhaustiveSwitch.Analyzer
     public class ExhaustiveEnumCodeFixProvider : CodeFixProvider
     {
         private const string DiagnosticId = "EXH1001";
+        private const string NullableDiagnosticId = "EXH1002";
 
-        public sealed override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(DiagnosticId);
+        public sealed override ImmutableArray<string> FixableDiagnosticIds => ImmutableArray.Create(DiagnosticId, NullableDiagnosticId);
 
         public sealed override FixAllProvider GetFixAllProvider()
         {
@@ -46,10 +46,10 @@ namespace ExhaustiveSwitch.Analyzer
             if (switchStatement != null)
             {
                 var allDiagnostics = context.Diagnostics
-                    .Where(d => d.Id == DiagnosticId)
+                    .Where(d => d.Id == DiagnosticId || d.Id == NullableDiagnosticId)
                     .ToList();
 
-                var (missingMembers, enumTypeName, enumTypeMetadata) = ExtractDiagnosticInfo(allDiagnostics);
+                var (missingMembers, enumTypeMetadata) = ExtractDiagnosticInfo(allDiagnostics);
 
                 if (missingMembers.Count == 0)
                 {
@@ -63,7 +63,7 @@ namespace ExhaustiveSwitch.Analyzer
                         CodeAction.Create(
                             title: Resources.CodeFixAddAllCases,
                             createChangedDocument: c => AddMissingEnumCasesToSwitchStatementAsync(
-                                context.Document, switchStatement, missingMembers, enumTypeName, enumTypeMetadata, c),
+                                context.Document, switchStatement, missingMembers, enumTypeMetadata, c),
                             equivalenceKey: "AddAllEnumCases"),
                         diagnostic);
                 }
@@ -75,7 +75,7 @@ namespace ExhaustiveSwitch.Analyzer
                         CodeAction.Create(
                             title: string.Format(Resources.CodeFixAddSingleCase, member),
                             createChangedDocument: c => AddMissingEnumCasesToSwitchStatementAsync(
-                                context.Document, switchStatement, new[] { member }, enumTypeName, enumTypeMetadata, c),
+                                context.Document, switchStatement, new[] { member }, enumTypeMetadata, c),
                             equivalenceKey: $"AddSingleEnumCase_{member}"),
                         diagnostic);
                 }
@@ -87,10 +87,10 @@ namespace ExhaustiveSwitch.Analyzer
             if (switchExpression != null)
             {
                 var allDiagnostics = context.Diagnostics
-                    .Where(d => d.Id == DiagnosticId)
+                    .Where(d => d.Id == DiagnosticId || d.Id == NullableDiagnosticId)
                     .ToArray();
 
-                var (missingMembers, enumTypeName, enumTypeMetadata) = ExtractDiagnosticInfo(allDiagnostics);
+                var (missingMembers, enumTypeMetadata) = ExtractDiagnosticInfo(allDiagnostics);
 
                 if (missingMembers.Count == 0)
                 {
@@ -104,7 +104,7 @@ namespace ExhaustiveSwitch.Analyzer
                         CodeAction.Create(
                             title: Resources.CodeFixAddAllCases,
                             createChangedDocument: c => AddMissingEnumCasesToSwitchExpressionAsync(
-                                context.Document, switchExpression, missingMembers, enumTypeName, enumTypeMetadata, c),
+                                context.Document, switchExpression, missingMembers, enumTypeMetadata, c),
                             equivalenceKey: "AddAllEnumCases"),
                         diagnostic);
                 }
@@ -116,7 +116,7 @@ namespace ExhaustiveSwitch.Analyzer
                         CodeAction.Create(
                             title: string.Format(Resources.CodeFixAddSingleCase, member),
                             createChangedDocument: c => AddMissingEnumCasesToSwitchExpressionAsync(
-                                context.Document, switchExpression, new[] { member }, enumTypeName, enumTypeMetadata, c),
+                                context.Document, switchExpression, new[] { member }, enumTypeMetadata, c),
                             equivalenceKey: $"AddSingleEnumCase_{member}"),
                         diagnostic);
                 }
@@ -127,7 +127,6 @@ namespace ExhaustiveSwitch.Analyzer
             Document document,
             SwitchStatementSyntax switchStatement,
             IReadOnlyList<string> missingMembers,
-            string enumTypeName,
             string enumTypeMetadata,
             CancellationToken cancellationToken)
         {
@@ -151,8 +150,8 @@ namespace ExhaustiveSwitch.Analyzer
             }
 
             var sections = switchStatement.Sections;
-            var defaultSection = sections.FirstOrDefault(s => s.Labels.Any(l => l is DefaultSwitchLabelSyntax));
-            var defaultIndex = defaultSection != null ? sections.IndexOf(defaultSection) : sections.Count;
+            var defaultIndex = sections.IndexOf(s => s.Labels.Any(l => l is DefaultSwitchLabelSyntax));
+            if (defaultIndex < 0) defaultIndex = sections.Count;
 
             var newSections = sections;
             // Insert in reverse order so items are inserted from the beginning of the list
@@ -174,7 +173,6 @@ namespace ExhaustiveSwitch.Analyzer
             Document document,
             SwitchExpressionSyntax switchExpression,
             IReadOnlyList<string> missingMembers,
-            string enumTypeName,
             string enumTypeMetadata,
             CancellationToken cancellationToken)
         {
@@ -198,8 +196,8 @@ namespace ExhaustiveSwitch.Analyzer
             }
 
             var arms = switchExpression.Arms;
-            var discardArm = arms.FirstOrDefault(a => a.Pattern is DiscardPatternSyntax);
-            var discardIndex = discardArm != null ? arms.IndexOf(discardArm) : arms.Count;
+            var discardIndex = arms.IndexOf(a => a.Pattern is DiscardPatternSyntax);
+            if (discardIndex < 0) discardIndex = arms.Count;
 
             var newArms = arms;
             // Insert in reverse order so items are inserted from the beginning of the list
@@ -217,7 +215,7 @@ namespace ExhaustiveSwitch.Analyzer
             return document.WithSyntaxRoot(newRoot);
         }
 
-        private INamedTypeSymbol GetEnumTypeSymbol(SemanticModel semanticModel, string enumTypeMetadata)
+        private static INamedTypeSymbol GetEnumTypeSymbol(SemanticModel semanticModel, string enumTypeMetadata)
         {
             if (string.IsNullOrEmpty(enumTypeMetadata))
             {
@@ -229,69 +227,76 @@ namespace ExhaustiveSwitch.Analyzer
 
         private SwitchSectionSyntax CreateCaseSectionForEnumMember(INamedTypeSymbol enumType, string memberName)
         {
-            var enumTypeName = enumType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-            // case EnumType.Member:
-            //     throw new NotImplementedException();
-            var typeSyntax = SyntaxFactory.ParseTypeName(enumTypeName)
-                .WithAdditionalAnnotations(Simplifier.Annotation);
-
-            var memberAccess = SyntaxFactory.MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                typeSyntax,
-                SyntaxFactory.IdentifierName(memberName));
-
-            var caseLabel = SyntaxFactory.CaseSwitchLabel(
-                memberAccess,
-                SyntaxFactory.Token(SyntaxKind.ColonToken));
-
             var throwStatement = SyntaxFactory.ThrowStatement(
                 SyntaxFactory.ObjectCreationExpression(
                     SyntaxFactory.ParseTypeName("System.NotImplementedException"))
                 .WithArgumentList(SyntaxFactory.ArgumentList()));
 
-            var section = SyntaxFactory.SwitchSection()
+            SwitchLabelSyntax caseLabel;
+            if (memberName == "null")
+            {
+                caseLabel = SyntaxFactory.CaseSwitchLabel(
+                    SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression),
+                    SyntaxFactory.Token(SyntaxKind.ColonToken));
+            }
+            else
+            {
+                var enumTypeName = enumType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                var typeSyntax = SyntaxFactory.ParseTypeName(enumTypeName)
+                    .WithAdditionalAnnotations(Simplifier.Annotation);
+
+                var memberAccess = SyntaxFactory.MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    typeSyntax,
+                    SyntaxFactory.IdentifierName(memberName));
+
+                caseLabel = SyntaxFactory.CaseSwitchLabel(
+                    memberAccess,
+                    SyntaxFactory.Token(SyntaxKind.ColonToken));
+            }
+
+            return SyntaxFactory.SwitchSection()
                 .AddLabels(caseLabel)
                 .AddStatements(throwStatement);
-
-            return section;
         }
 
         private SwitchExpressionArmSyntax CreateSwitchArmForEnumMember(INamedTypeSymbol enumType, string memberName)
         {
-            var enumTypeName = enumType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-            // EnumType.Member => throw new NotImplementedException(),
-            var typeSyntax = SyntaxFactory.ParseTypeName(enumTypeName)
-                .WithAdditionalAnnotations(Simplifier.Annotation);
-
-            var memberAccess = SyntaxFactory.MemberAccessExpression(
-                SyntaxKind.SimpleMemberAccessExpression,
-                typeSyntax,
-                SyntaxFactory.IdentifierName(memberName));
-
-            var pattern = SyntaxFactory.ConstantPattern(memberAccess);
-
             var throwExpression = SyntaxFactory.ThrowExpression(
                 SyntaxFactory.ObjectCreationExpression(
-                    SyntaxFactory.ParseTypeName("System.NotImplementedException"))
-                .WithArgumentList(SyntaxFactory.ArgumentList()));
+                        SyntaxFactory.ParseTypeName("System.NotImplementedException"))
+                    .WithArgumentList(SyntaxFactory.ArgumentList()));
 
-            var arm = SyntaxFactory.SwitchExpressionArm(
-                pattern,
-                throwExpression);
+            PatternSyntax pattern;
+            if (memberName == "null")
+            {
+                pattern = SyntaxFactory.ConstantPattern(
+                    SyntaxFactory.LiteralExpression(SyntaxKind.NullLiteralExpression));
+            }
+            else
+            {
+                var enumTypeName = enumType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                var typeSyntax = SyntaxFactory.ParseTypeName(enumTypeName)
+                    .WithAdditionalAnnotations(Simplifier.Annotation);
 
-            return arm;
+                var memberAccess = SyntaxFactory.MemberAccessExpression(
+                    SyntaxKind.SimpleMemberAccessExpression,
+                    typeSyntax,
+                    SyntaxFactory.IdentifierName(memberName));
+
+                pattern = SyntaxFactory.ConstantPattern(memberAccess);
+            }
+
+            return SyntaxFactory.SwitchExpressionArm(pattern, throwExpression);
         }
 
         /// <summary>
         /// Extracts missing enum member information from diagnostic data
         /// </summary>
-        private static (List<string> missingMembers, string enumTypeName, string enumTypeMetadata) ExtractDiagnosticInfo(
+        private static (List<string> missingMembers, string enumTypeMetadata) ExtractDiagnosticInfo(
             IEnumerable<Diagnostic> diagnostics)
         {
             var missingMembers = new List<string>();
-            string enumTypeName = null;
             string enumTypeMetadata = null;
 
             foreach (var diag in diagnostics)
@@ -303,17 +308,14 @@ namespace ExhaustiveSwitch.Analyzer
                         missingMembers.Add(member);
                     }
                 }
-                if (diag.Properties.TryGetValue("EnumType", out var typeName))
-                {
-                    enumTypeName = typeName;
-                }
+
                 if (diag.Properties.TryGetValue("EnumTypeMetadata", out var typeMetadata))
                 {
                     enumTypeMetadata = typeMetadata;
                 }
             }
 
-            return (missingMembers, enumTypeName, enumTypeMetadata);
+            return (missingMembers, enumTypeMetadata);
         }
     }
 }
