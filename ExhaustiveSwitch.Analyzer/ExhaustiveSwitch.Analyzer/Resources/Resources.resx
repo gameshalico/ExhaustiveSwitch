@@ -165,4 +165,16 @@
     <value>All enum members must be explicitly handled in switch statements on enums with [Exhaustive] attribute.</value>
     <comment>The description of the enum analyzer diagnostic</comment>
   </data>
+  <data name="NullableEnumAnalyzerTitle" xml:space="preserve">
+    <value>Missing null case for nullable Exhaustive enum</value>
+    <comment>The title of the nullable enum analyzer diagnostic</comment>
+  </data>
+  <data name="NullableEnumAnalyzerMessageFormat" xml:space="preserve">
+    <value>Switch on nullable Exhaustive enum '{0}' does not handle the null case.</value>
+    <comment>The message format for the nullable enum analyzer diagnostic. {0} is the enum type name.</comment>
+  </data>
+  <data name="NullableEnumAnalyzerDescription" xml:space="preserve">
+    <value>Switch statements on nullable Exhaustive enums must handle the null case explicitly.</value>
+    <comment>The description of the nullable enum analyzer diagnostic</comment>
+  </data>
 </root>

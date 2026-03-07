@@ -474,6 +474,212 @@ namespace MyNamespace
             await VerifyCodeFixAsync(test, expected, fixedCode);
         }
 
+        // ========== Nullable Enum CodeFix Tests ==========
+
+        /// <summary>
+        /// Add a null case to a switch statement for a nullable enum
+        /// </summary>
+        [Fact]
+        public async Task AddNullCaseToNullableEnumSwitchStatement()
+        {
+            const string test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public void Process(GameState? state)
+    {
+        {|#0:switch (state)
+        {
+            case GameState.Menu:
+                break;
+            case GameState.Playing:
+                break;
+            case GameState.Paused:
+                break;
+        }|}
+    }
+}";
+
+            const string fixedCode = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public void Process(GameState? state)
+    {
+        switch (state)
+        {
+            case GameState.Menu:
+                break;
+            case GameState.Playing:
+                break;
+            case GameState.Paused:
+                break;
+            case null:
+                throw new System.NotImplementedException();
+        }
+    }
+}";
+
+            var expected = new DiagnosticResult("EXH1002", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState");
+
+            await VerifyCodeFixAsync(test, expected, fixedCode);
+        }
+
+        /// <summary>
+        /// Add a null case to a switch expression for a nullable enum
+        /// </summary>
+        [Fact]
+        public async Task AddNullCaseToNullableEnumSwitchExpression()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public string Process(GameState? state)
+    {
+        return {|#0:state switch
+        {
+            GameState.Menu => ""Menu"",
+            GameState.Playing => ""Playing"",
+            GameState.Paused => ""Paused"",
+        }|};
+    }
+}";
+
+            var fixedCode = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public string Process(GameState? state)
+    {
+        return state switch
+        {
+            GameState.Menu => ""Menu"",
+            GameState.Playing => ""Playing"",
+            GameState.Paused => ""Paused"",
+            null => throw new System.NotImplementedException()
+        };
+    }
+}";
+
+            var expected = new DiagnosticResult("EXH1002", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState");
+
+            await VerifyCodeFixAsync(test, expected, fixedCode);
+        }
+
+        /// <summary>
+        /// Add all missing members and null to a switch statement
+        /// </summary>
+        [Fact]
+        public async Task AddAllMissingMembersAndNullToSwitchStatement()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public void Process(GameState? state)
+    {
+        {|#0:switch (state)
+        {
+            case GameState.Menu:
+                break;
+        }|}
+    }
+}";
+
+            var fixedCode = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public void Process(GameState? state)
+    {
+        switch (state)
+        {
+            case GameState.Menu:
+                break;
+            case GameState.Paused:
+                throw new System.NotImplementedException();
+            case GameState.Playing:
+                throw new System.NotImplementedException();
+            case null:
+                throw new System.NotImplementedException();
+        }
+    }
+}";
+
+            var expected1 = new DiagnosticResult("EXH1001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState", "Paused");
+
+            var expected2 = new DiagnosticResult("EXH1001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState", "Playing");
+
+            var expected3 = new DiagnosticResult("EXH1002", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState");
+
+            await VerifyCodeFixAsync(test, new[] { expected1, expected2, expected3 }, fixedCode, 0);
+        }
+
         private static async Task VerifyCodeFixAsync(
             string source,
             DiagnosticResult expected,

@@ -114,6 +114,30 @@ public void ProcessGameState(GameState state)
 }
 ```
 
+### Nullable Enumのサポート
+
+Nullable enum（`GameState?`）にも対応しています。アナライザーは `Nullable<T>` を展開してすべてのenum値をチェックし、さらに `null` ケースの明示的な処理も要求します。
+
+```csharp
+public void ProcessGameState(GameState? state)
+{
+    // すべてのenum値とnullが処理されていない場合はエラー
+    switch (state)
+    {
+        case GameState.Title:
+            break;
+        case GameState.Playing:
+            break;
+        case GameState.Paused:
+            break;
+        case GameState.GameOver:
+            break;
+        case null:
+            break;
+    }
+}
+```
+
 ### エラーメッセージ
 
 すべての`[Case]`型が明示的に処理されていない場合、以下のようなエラーが発行されます。
@@ -126,6 +150,11 @@ public void ProcessGameState(GameState state)
 enumの場合:
 ```
 エラー EXH1001: Exhaustive enum 'GameState' の enum 値 'GameState.Paused' が switch で処理されていません。
+```
+
+nullable enumでnullケースが不足している場合:
+```
+エラー EXH1002: nullable Exhaustive enum 'GameState' の null ケースが switch で処理されていません。
 ```
 
 `[Case]`属性が付与された型が`[Exhaustive]`属性を継承/実装していない場合、以下のような警告が発行されます。

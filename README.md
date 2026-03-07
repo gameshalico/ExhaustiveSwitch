@@ -114,6 +114,30 @@ public void ProcessGameState(GameState state)
 }
 ```
 
+### Nullable Enum Support
+
+Nullable enums (`GameState?`) are also supported. The analyzer unwraps `Nullable<T>` and checks all enum members, and additionally requires the `null` case to be handled explicitly.
+
+```csharp
+public void ProcessGameState(GameState? state)
+{
+    // Error if any enum value or null is not handled
+    switch (state)
+    {
+        case GameState.Title:
+            break;
+        case GameState.Playing:
+            break;
+        case GameState.Paused:
+            break;
+        case GameState.GameOver:
+            break;
+        case null:
+            break;
+    }
+}
+```
+
 ### Error Messages
 
 If not all `[Case]` types are explicitly handled, the following error will be issued.
@@ -126,6 +150,11 @@ Error EXH0001: Case 'Bomb' of Exhaustive type 'IItem' is not handled in the swit
 For enums:
 ```
 Error EXH1001: Enum value 'GameState.Paused' of Exhaustive enum 'GameState' is not handled in the switch.
+```
+
+For nullable enums when the null case is missing:
+```
+Error EXH1002: Switch on nullable Exhaustive enum 'GameState' does not handle the null case.
 ```
 
 If a type with the `[Case]` attribute does not inherit/implement a type with the `[Exhaustive]` attribute, the following warning will be issued.

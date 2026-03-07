@@ -1,12 +1,73 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace ExhaustiveSwitch.Analyzer
 {
     internal static class TypeAnalysisHelpers
     {
+        /// <summary>
+        /// Unwraps Nullable&lt;T&gt; to its underlying type T.
+        /// Returns the original type if not nullable.
+        /// </summary>
+        public static ITypeSymbol UnwrapNullable(ITypeSymbol type, Compilation compilation)
+        {
+            var nullableType = compilation.GetTypeByMetadataName("System.Nullable`1");
+            if (nullableType != null &&
+                type is INamedTypeSymbol namedType &&
+                namedType.OriginalDefinition.Equals(nullableType, SymbolEqualityComparer.Default) &&
+                namedType.TypeArguments.Length == 1)
+            {
+                return namedType.TypeArguments[0];
+            }
+            return type;
+        }
+
+        /// <summary>
+        /// Checks whether the type is Nullable&lt;T&gt;.
+        /// </summary>
+        public static bool IsNullableValueType(ITypeSymbol type, Compilation compilation)
+        {
+            var nullableType = compilation.GetTypeByMetadataName("System.Nullable`1");
+            return nullableType != null &&
+                type is INamedTypeSymbol namedType &&
+                namedType.OriginalDefinition.Equals(nullableType, SymbolEqualityComparer.Default);
+        }
+
+        /// <summary>
+        /// Checks whether any pattern in the list handles null.
+        /// </summary>
+        public static bool HasNullPattern(IEnumerable<SyntaxNode> patterns)
+        {
+            foreach (var pattern in patterns)
+            {
+                switch (pattern)
+                {
+                    case DefaultSwitchLabelSyntax _:
+                        return true;
+                    case CaseSwitchLabelSyntax caseLabel:
+                        if (caseLabel.Value is LiteralExpressionSyntax literal &&
+                            literal.IsKind(SyntaxKind.NullLiteralExpression))
+                            return true;
+                        break;
+                    case CasePatternSwitchLabelSyntax patternLabel:
+                        if (patternLabel.Pattern is ConstantPatternSyntax constPattern &&
+                            constPattern.Expression.IsKind(SyntaxKind.NullLiteralExpression))
+                            return true;
+                        break;
+                    case DiscardPatternSyntax _:
+                        return true;
+                    case ConstantPatternSyntax constantPattern:
+                        if (constantPattern.Expression.IsKind(SyntaxKind.NullLiteralExpression))
+                            return true;
+                        break;
+                }
+            }
+            return false;
+        }
+
         /// <summary>
         /// Determines whether a symbol has the specified attribute.
         /// </summary>

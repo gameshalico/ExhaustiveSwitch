@@ -165,4 +165,16 @@
     <value>[Exhaustive]属性を持つenumのすべてのメンバーが明示的に処理されている必要があります。</value>
     <comment>enum アナライザー診断の説明</comment>
   </data>
+  <data name="NullableEnumAnalyzerTitle" xml:space="preserve">
+    <value>nullable Exhaustive enum の null ケース不足</value>
+    <comment>nullable enum アナライザー診断のタイトル</comment>
+  </data>
+  <data name="NullableEnumAnalyzerMessageFormat" xml:space="preserve">
+    <value>nullable Exhaustive enum '{0}' の null ケースが switch で処理されていません。</value>
+    <comment>nullable enum アナライザー診断のメッセージ形式。{0}はenum型名。</comment>
+  </data>
+  <data name="NullableEnumAnalyzerDescription" xml:space="preserve">
+    <value>nullable Exhaustive enum の switch 文では null ケースを明示的に処理する必要があります。</value>
+    <comment>nullable enum アナライザー診断の説明</comment>
+  </data>
 </root>

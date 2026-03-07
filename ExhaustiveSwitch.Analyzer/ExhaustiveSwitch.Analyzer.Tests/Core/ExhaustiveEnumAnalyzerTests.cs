@@ -455,6 +455,463 @@ public class Program
             await VerifyAnalyzerAsync(test);
         }
 
+        /// <summary>
+        /// When all enum members and null are handled, no diagnostic
+        /// </summary>
+        [Fact]
+        public async Task WhenNullableEnumAllMembersAndNullHandled_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public void Process(GameState? state)
+    {
+        switch (state)
+        {
+            case GameState.Menu:
+                break;
+            case GameState.Playing:
+                break;
+            case GameState.Paused:
+                break;
+            case null:
+                break;
+        }
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
+        /// <summary>
+        /// When all enum members handled and default covers null, no diagnostic
+        /// </summary>
+        [Fact]
+        public async Task WhenNullableEnumAllMembersAndDefaultHandled_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public void Process(GameState? state)
+    {
+        switch (state)
+        {
+            case GameState.Menu:
+                break;
+            case GameState.Playing:
+                break;
+            case GameState.Paused:
+                break;
+            default:
+                break;
+        }
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
+        /// <summary>
+        /// Report EXH1002 when all enum members are handled but null is missing
+        /// </summary>
+        [Fact]
+        public async Task WhenNullableEnumMissingNull_Diagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public void Process(GameState? state)
+    {
+        {|#0:switch (state)
+        {
+            case GameState.Menu:
+                break;
+            case GameState.Playing:
+                break;
+            case GameState.Paused:
+                break;
+        }|}
+    }
+}";
+
+            var expected = new DiagnosticResult("EXH1002", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState");
+
+            await VerifyAnalyzerAsync(test, expected);
+        }
+
+        /// <summary>
+        /// Report both EXH1001 and EXH1002 when nullable enum is missing members and null
+        /// </summary>
+        [Fact]
+        public async Task WhenNullableEnumMissingMembersAndNull_ReportsBoth()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public void Process(GameState? state)
+    {
+        {|#0:switch (state)
+        {
+            case GameState.Menu:
+                break;
+        }|}
+    }
+}";
+
+            var expected1 = new DiagnosticResult("EXH1001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState", "Playing");
+
+            var expected2 = new DiagnosticResult("EXH1001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState", "Paused");
+
+            var expected3 = new DiagnosticResult("EXH1002", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState");
+
+            await VerifyAnalyzerAsync(test, expected1, expected2, expected3);
+        }
+
+        /// <summary>
+        /// Report only EXH1001 when nullable enum is missing members but null is handled
+        /// </summary>
+        [Fact]
+        public async Task WhenNullableEnumMissingMembersButNullHandled_OnlyEXH1001()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public void Process(GameState? state)
+    {
+        {|#0:switch (state)
+        {
+            case GameState.Menu:
+                break;
+            case null:
+                break;
+        }|}
+    }
+}";
+
+            var expected1 = new DiagnosticResult("EXH1001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState", "Playing");
+
+            var expected2 = new DiagnosticResult("EXH1001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState", "Paused");
+
+            await VerifyAnalyzerAsync(test, expected1, expected2);
+        }
+
+        // ---- Switch Expression Nullable ----
+
+        /// <summary>
+        /// Switch expression: all members + null handled, no diagnostic
+        /// </summary>
+        [Fact]
+        public async Task WhenNullableEnumSwitchExpressionAllHandledWithNull_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public string Process(GameState? state)
+    {
+        return state switch
+        {
+            GameState.Menu => ""Menu"",
+            GameState.Playing => ""Playing"",
+            GameState.Paused => ""Paused"",
+            null => ""Null"",
+        };
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
+        /// <summary>
+        /// Switch expression: all members + discard covers null, no diagnostic
+        /// </summary>
+        [Fact]
+        public async Task WhenNullableEnumSwitchExpressionAllHandledWithDiscard_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public string Process(GameState? state)
+    {
+        return state switch
+        {
+            GameState.Menu => ""Menu"",
+            GameState.Playing => ""Playing"",
+            GameState.Paused => ""Paused"",
+            _ => ""Default"",
+        };
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
+        /// <summary>
+        /// Switch expression: report EXH1002 when all members are handled but null is missing
+        /// </summary>
+        [Fact]
+        public async Task WhenNullableEnumSwitchExpressionMissingNull_Diagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public string Process(GameState? state)
+    {
+        return {|#0:state switch
+        {
+            GameState.Menu => ""Menu"",
+            GameState.Playing => ""Playing"",
+            GameState.Paused => ""Paused"",
+        }|};
+    }
+}";
+
+            var expected = new DiagnosticResult("EXH1002", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState");
+
+            await VerifyAnalyzerAsync(test, expected);
+        }
+
+        /// <summary>
+        /// Switch expression: missing members and null, reports both
+        /// </summary>
+        [Fact]
+        public async Task WhenNullableEnumSwitchExpressionMissingMembersAndNull_ReportsBoth()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public string Process(GameState? state)
+    {
+        return {|#0:state switch
+        {
+            GameState.Menu => ""Menu"",
+        }|};
+    }
+}";
+
+            var expected1 = new DiagnosticResult("EXH1001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState", "Playing");
+
+            var expected2 = new DiagnosticResult("EXH1001", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState", "Paused");
+
+            var expected3 = new DiagnosticResult("EXH1002", DiagnosticSeverity.Error)
+                .WithLocation(0)
+                .WithArguments("GameState");
+
+            await VerifyAnalyzerAsync(test, expected1, expected2, expected3);
+        }
+
+        /// <summary>
+        /// When null case is in the middle (not last), no EXH1002
+        /// </summary>
+        [Fact]
+        public async Task WhenNullableEnumNullCaseInMiddle_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public void Process(GameState? state)
+    {
+        switch (state)
+        {
+            case GameState.Menu:
+                break;
+            case null:
+                break;
+            case GameState.Playing:
+                break;
+            case GameState.Paused:
+                break;
+        }
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
+        /// <summary>
+        /// Switch expression: null arm in the middle, no EXH1002
+        /// </summary>
+        [Fact]
+        public async Task WhenNullableEnumSwitchExpressionNullArmInMiddle_NoDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing,
+    Paused
+}
+
+public class Program
+{
+    public string Process(GameState? state)
+    {
+        return state switch
+        {
+            GameState.Menu => ""Menu"",
+            null => ""Null"",
+            GameState.Playing => ""Playing"",
+            GameState.Paused => ""Paused"",
+        };
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
+        /// <summary>
+        /// Non-nullable enum should not produce EXH1002 even without null handling
+        /// </summary>
+        [Fact]
+        public async Task WhenNonNullableEnumAllHandled_NoNullDiagnostic()
+        {
+            var test = @"
+using ExhaustiveSwitch;
+
+[Exhaustive]
+public enum GameState
+{
+    Menu,
+    Playing
+}
+
+public class Program
+{
+    public void Process(GameState state)
+    {
+        switch (state)
+        {
+            case GameState.Menu:
+                break;
+            case GameState.Playing:
+                break;
+        }
+    }
+}";
+
+            await VerifyAnalyzerAsync(test);
+        }
+
         private static async Task VerifyAnalyzerAsync(string source, params DiagnosticResult[] expected)
         {
             var test = new CSharpAnalyzerTest<ExhaustiveEnumAnalyzer, DefaultVerifier>
