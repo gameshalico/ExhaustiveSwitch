@@ -1,0 +1,30 @@
+name: Check
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore dependencies
+        working-directory: ExhaustiveSwitch.Analyzer
+        run: dotnet restore
+      - name: Build
+        working-directory: ExhaustiveSwitch.Analyzer
+        run: dotnet build --no-restore
+      - name: Test
+        working-directory: ExhaustiveSwitch.Analyzer
+        run: dotnet test --no-build
